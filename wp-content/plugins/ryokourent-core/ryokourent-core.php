@@ -19,18 +19,35 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Define Plugin Constants.
+// -----------------------------------------------------------------------------
+// Plugin Constants
+// -----------------------------------------------------------------------------
 define('RYOKOURENT_VERSION', '1.0.0');
 define('RYOKOURENT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RYOKOURENT_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('RYOKOURENT_PLUGIN_FILE', __FILE__);
+
+if (!defined('RYOKOURENT_TIMEZONE')) {
+    define('RYOKOURENT_TIMEZONE', 'Asia/Jakarta');
+}
+
+if (!defined('RYOKOURENT_DEFAULT_WA_NUMBER')) {
+    define('RYOKOURENT_DEFAULT_WA_NUMBER', '6281234567890');
+}
+
+// -----------------------------------------------------------------------------
+// Core Bootstrap & Module Loader
+// -----------------------------------------------------------------------------
+
+// Load essential helper functions immediately.
+require_once RYOKOURENT_PLUGIN_DIR . 'includes/helpers.php';
 
 /**
  * Activation hook callback.
  * Checks system requirements and sets up initial roles/options safely.
  */
 function ryokourent_activate_plugin() {
-    // Check PHP version requirement
+    // Check PHP version requirement.
     if (version_compare(PHP_VERSION, '8.0', '<')) {
         deactivate_plugins(plugin_basename(__FILE__));
         wp_die(
@@ -40,12 +57,17 @@ function ryokourent_activate_plugin() {
         );
     }
 
-    // Set default version option
+    // Set default version option.
     if (!get_option('ryokourent_version')) {
         add_option('ryokourent_version', RYOKOURENT_VERSION);
     }
 
-    // Flush rewrite rules on activation (after post types are registered in later tasks)
+    // Set default WA number option if not exists.
+    if (!get_option('ryokourent_wa_number')) {
+        add_option('ryokourent_wa_number', RYOKOURENT_DEFAULT_WA_NUMBER);
+    }
+
+    // Flush rewrite rules on activation.
     flush_rewrite_rules();
 }
 register_activation_hook(__FILE__, 'ryokourent_activate_plugin');
@@ -61,9 +83,40 @@ register_deactivation_hook(__FILE__, 'ryokourent_deactivate_plugin');
 
 /**
  * Plugin bootstrap initialization.
- * Sub-modules will be loaded here in TASK-003 and subsequent tasks.
+ * Loads sub-modules sequentially as they are implemented across tasks.
  */
 function ryokourent_init() {
-    // Modular includes will be connected in subsequent tasks.
+    // Array of core modules to load when present.
+    $modules = array(
+        // Post types & Taxonomies (FASE 2)
+        'includes/post-types.php',
+        'includes/taxonomies.php',
+        'includes/meta-boxes.php',
+
+        // Business Logic & Booking Engine (FASE 2 & 3)
+        'includes/pricing.php',
+        'includes/availability.php',
+        'includes/booking.php',
+        'includes/whatsapp.php',
+        'includes/user-roles.php',
+        'includes/settings.php',
+
+        // Admin & UI (FASE 2 & 3)
+        'admin/dashboard.php',
+        'admin/booking-columns.php',
+        'admin/admin-settings.php',
+
+        // Public Facing & Shortcodes (FASE 2 & 3)
+        'public/shortcodes.php',
+        'public/forms.php',
+        'public/templates.php',
+    );
+
+    foreach ($modules as $module) {
+        $file_path = RYOKOURENT_PLUGIN_DIR . $module;
+        if (file_exists($file_path)) {
+            require_once $file_path;
+        }
+    }
 }
 add_action('plugins_loaded', 'ryokourent_init');
