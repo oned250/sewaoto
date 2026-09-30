@@ -40,6 +40,7 @@ wp-content/
 │       ├── includes/
 │       │   ├── helpers.php              # Sanitasi input, format rupiah, timezone WIB helpers
 │       │   ├── post-types.php           # Registrasi CPT motor & CPT penyewaan
+│       │   ├── meta-fields.php          # Skema WordPress register_post_meta & sanitasi callback
 │       │   ├── taxonomies.php           # Registrasi taxonomy kategori_motor
 │       │   ├── meta-boxes.php           # Custom fields & metabox (spesifikasi, harga, data sewa)
 │       │   ├── pricing.php              # Logika kalkulasi harga (harian, mingguan, bulanan, bulk)
@@ -50,6 +51,7 @@ wp-content/
 │       │   └── settings.php             # Pengaturan nomor WhatsApp, jam buka, info pool
 │       ├── admin/
 │       │   ├── dashboard.php            # Widget/halaman ringkasan operasional unit & booking
+│       │   ├── motor-columns.php        # Kustomisasi kolom daftar armada motor di WP-Admin
 │       │   ├── booking-columns.php      # Kustomisasi kolom daftar penyewaan di WP-Admin
 │       │   └── admin-settings.php       # Halaman pengaturan admin (nomor WA, tarif bulk)
 │       ├── public/
@@ -64,6 +66,8 @@ wp-content/
 │       │       ├── ryokourent-booking.js # Vanilla JS hitung durasi, live draft WA, submit AJAX
 │       │       └── ryokourent-filter.js  # Filter instan kategori motor
 │       └── tests/
+│           ├── test-helpers.php         # Unit test helper sanitasi & durasi
+│           ├── test-cpt-motor.php       # Unit test CPT motor & meta sanitasi
 │           ├── test-pricing.php         # Unit test kalkulator harga
 │           └── test-availability.php    # Unit test pencegahan double booking
 │
@@ -112,20 +116,21 @@ wp-content/
 
 ## 5. Hubungan Antar-Fitur & Dependensi Modul
 1. **Katalog Motor & Form Booking:** Saat tombol "Sewa Sekarang" pada kartu motor diklik, ID motor dioper langsung ke input dropdown form booking (auto-selected).
-2. **Kalkulator Durasi & Mesin Harga:** Durasi (hari/jam) dihitung otomatis dari `start_datetime` dan `end_datetime`. Mesin harga menerapkan tarif harian (24 jam) dengan toleransi overtime, tarif mingguan (7 hari), atau bulanan (30 hari).
-3. **Validasi Ketersediaan & Status Booking:** Kuota unit fisik terikat pada CPT `motor`. Pada rentang tanggal yang dipilih, sistem memeriksa semua post CPT `penyewaan` dengan status `dikonfirmasi` dan `berjalan`. Jika `jumlah_booking_aktif >= total_unit_fisik`, unit ditandai tidak tersedia.
-4. **Role & Capabilities:** Pengaturan harga dan manajemen kuota unit diproteksi dengan capability `manage_ryokourent_settings` (hanya `administrator`), sementara operator hanya memiliki capability `manage_ryokourent_bookings` untuk pembaruan status dan verifikasi data sewa.
+2. **Kalkulator Durasi & Mesin Harga:** Durasi (hari/jam) dihitung otomatis dari `start_datetime` dan `end_datetime`. Mesin harga menerapkan tarif harian (24 jam) dengan toleransi overtime 2 jam, paket mingguan (7 hari), atau bulanan (30 hari). Seluruh perhitungan harga divalidasi mutlak di server; harga dari client tidak dipercaya mentah-mentah.
+3. **Validasi Ketersediaan & Status Booking:** Kuota unit fisik terikat pada CPT `motor`. Pada rentang tanggal yang dipilih, sistem memeriksa semua post CPT `penyewaan` dengan status `status_dikonfirmasi` dan `status_berjalan`. Jika `jumlah_booking_aktif >= total_unit_fisik`, unit ditandai tidak tersedia. Pengecekan dijalankan di 2 titik: saat submit online dan saat status diubah ke `status_dikonfirmasi`.
+4. **Role & Capabilities:** Pengaturan harga dan manajemen kuota unit diproteksi dengan capability `manage_ryokourent_settings` (hanya `administrator`), sementara operator (`ryokourent_operator`) hanya memiliki capability `manage_ryokourent_bookings` untuk pembaruan status dan verifikasi data sewa.
 
 ## 6. Keamanan Dasar (Security Hardening)
 1. **Data Sanitization & Validation:** Seluruh input formulir disaring menggunakan fungsi WordPress (`sanitize_text_field`, `sanitize_textarea_field`, `wp_strip_all_tags`, validasi format nomor telepon Indonesia `08... / 62...`).
 2. **Output Escaping:** Seluruh data yang dirender ke HTML wajib menggunakan `esc_html()`, `esc_attr()`, `esc_url()`.
-3. **Cross-Site Request Forgery (CSRF) Protection:** Menggunakan WordPress Nonces (`wp_create_nonce` dan `check_ajax_referer` / `wp_verify_nonce`) pada setiap form publik dan form admin.
-4. **Authorization & Capability Checks:** Menggunakan `current_user_can('manage_options')` dan custom capabilities untuk memblokir operator mengakses menu yang tidak diizinkan.
-5. **Direct Script Execution Prevention:** Setiap file PHP diawali dengan:
+3. **Cross-Site Request Forgery (CSRF) Protection:** Menggunakan WordPress Nonces (`wp_create_nonce` dan `check_ajax_referer` / `wp_verify_nonce`) pada setiap form publik dan form admin. Halaman formulir booking dikecualikan dari caching agresif atau menggunakan AJAX nonce refresher agar tidak kadaluwarsa pada LiteSpeed/WP Rocket.
+4. **Spam & Abuse Protection:** Formulir pemesanan dilengkapi field honeypot tak kasat mata (`ryokourent_hp`) dan pembatasan frekuensi pengiriman (rate-limiting via transient per IP).
+5. **Authorization & Capability Checks:** Menggunakan `current_user_can('manage_ryokourent_settings')` dan `current_user_can('manage_ryokourent_bookings')` untuk membatasi akses menu dan data sensitif penyewa.
+6. **Direct Script Execution Prevention:** Setiap file PHP diawali dengan:
    ```php
    if (!defined('ABSPATH')) {
        exit; // Exit if accessed directly
    }
    ```
-6. **Perlindungan Privasi Pelanggan:** Tidak menyimpan foto fisik identitas (KTP/SIM) di direktori publik server `wp-content/uploads/`.
-7. **Pencegahan Data Leak Armada:** Informasi plat nomor dan stok unit fisik disembunyikan dari DOM publik frontend dan REST API publik.
+7. **Perlindungan Privasi Pelanggan (UU PDP):** Tidak menyimpan foto fisik identitas (KTP/SIM) di direktori publik server `wp-content/uploads/`.
+8. **Pencegahan Data Leak Armada:** Informasi plat nomor dan stok unit fisik dinonaktifkan dari REST API publik (`show_in_rest => false`), dan respons AJAX ketersediaan hanya mengembalikan status boolean.

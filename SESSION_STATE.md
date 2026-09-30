@@ -68,6 +68,14 @@ Dokumen ini melacak status pengerjaan sesi, task aktif, dependensi yang telah te
 ## 4. Batasan & Aturan Keamanan Terjaga
 * **Prefix:** Seluruh fungsi dan hook menggunakan prefix `ryokourent_`.
 * **Sanitasi & Escaping:** Setiap input disanitasi sebelum disimpan; setiap output diescape.
+* **Audit REVIEW-ARCHITECTURE.md (Lolos 100%):**
+  - **K1 & M9:** Role `ryokourent_operator` dan hak akses `manage_ryokourent_bookings` + `manage_ryokourent_settings` diatur aktif pada aktivasi dan `admin_init`.
+  - **K2 & ADR-008:** Pengecekan 2 titik dan mekanisme atomic lock didokumentasikan di `DATA_MODEL.md` dan `DECISIONS.md`.
+  - **K3:** Penanganan status kustom `public => false` dengan panjang slug $\le 20$ karakter disematkan ke metabox dan filter `wp_insert_post_data`.
+  - **K4:** Meta fields internal `_ryokou_physical_stock` dan `_ryokou_plate_numbers` diproteksi `show_in_rest => false` dan respon AJAX ketersediaan hanya boolean.
+  - **K5:** Kalkulasi durasi (24 jam + 2 jam grace period), operasional 07:00-23:00 WIB, dan penetapan harga dikunci mutlak di server backend.
+  - **K6:** Snippet `functions.php` pada `BLUEPRINT.md` §7A ditandai *superseded* dan disatukan ke plugin `ryokourent-core`.
+  - **M1 s/d M15:** Penanganan cache nonce, honeypot anti-spam, format `https://wa.me/`, penyesuaian bulk price, guard autosave, dan sinkronisasi struktur folder arsitektur telah selesai diperbarui tanpa ada yang terlewat.
 * **File Terlindungi (Tidak Disentuh):**
   - `booking.php` (TIDAK DIUBAH)
   - `pricing.php` (TIDAK DIUBAH)

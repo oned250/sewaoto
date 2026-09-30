@@ -165,71 +165,13 @@ Unit Kembali & Selesai Sewa → Status: "Selesai" (Deposit Dikembalikan)
 
 ## 7. Struktur Data Penyewaan (CPT & Status)
 
-### A. Kode PHP Siap Pasang (`functions.php` Tema Anak):
-```php
-<?php
-/**
- * Registrasi CPT Motor, CPT Penyewaan, dan Status Kustom Ryokourent
- * Tambahkan pada functions.php tema anak (child theme) Anda
- */
+> **CATATAN ARSITEKTUR (SUPERSEDED):**
+> Snippet `functions.php` tema anak di bawah ini telah disupervisi dan dipindahkan secara permanen ke dalam plugin kustom **`wp-content/plugins/ryokourent-core/`** (`includes/post-types.php`) sesuai aturan `AI_RULES.md` dan `ARCHITECTURE.md`. Seluruh fungsi menggunakan prefix standar **`ryokourent_`**, kapabilitas CPT dipetakan ke custom RBAC (`manage_ryokourent_bookings` & `manage_ryokourent_settings`), status kustom berstatus `public => false` untuk keamanan PII, dan meta data menggunakan `_ryokou_*` native tanpa dependensi plugin pihak ketiga.
 
-add_action('init', 'ryokou_register_custom_post_types');
-function ryokou_register_custom_post_types() {
-    // 1. CPT Armada Motor
-    register_post_type('motor', array(
-        'labels' => array(
-            'name'               => 'Armada Motor',
-            'singular_name'      => 'Motor',
-            'add_new_item'       => 'Tambah Motor Baru',
-            'edit_item'          => 'Edit Data Motor',
-        ),
-        'public'        => true,
-        'has_archive'   => true,
-        'menu_icon'     => 'dashicons-car',
-        'supports'      => array('title', 'editor', 'thumbnail', 'custom-fields'),
-        'show_in_rest'  => true,
-    ));
-
-    // 2. CPT Data Penyewaan (Internal Admin)
-    register_post_type('penyewaan', array(
-        'labels' => array(
-            'name'               => 'Penyewaan Motor',
-            'singular_name'      => 'Penyewaan',
-            'add_new_item'       => 'Catat Booking Baru',
-            'edit_item'          => 'Detail Booking',
-        ),
-        'public'          => false,
-        'show_ui'         => true,
-        'show_in_menu'    => true,
-        'menu_icon'       => 'dashicons-calendar-alt',
-        'supports'        => array('title', 'custom-fields'),
-        'capability_type' => 'post',
-    ));
-}
-
-// 3. Daftarkan Status Kustom untuk Alur Penyewaan
-add_action('init', 'ryokou_register_rental_statuses');
-function ryokou_register_rental_statuses() {
-    $statuses = array(
-        'menunggu'     => array('label' => 'Menunggu Konfirmasi', 'color' => '#f59e0b'),
-        'dikonfirmasi' => array('label' => 'Dikonfirmasi',       'color' => '#0284c7'),
-        'berjalan'     => array('label' => 'Sewa Berjalan',      'color' => '#10b981'),
-        'selesai'      => array('label' => 'Selesai',            'color' => '#64748b'),
-        'dibatalkan'   => array('label' => 'Dibatalkan',         'color' => '#ef4444'),
-    );
-
-    foreach ($statuses as $slug => $data) {
-        register_post_status('status_' . $slug, array(
-            'label'                     => _x($data['label'], 'post'),
-            'public'                    => true,
-            'exclude_from_search'       => false,
-            'show_in_admin_all_list'    => true,
-            'show_in_admin_status_list' => true,
-            'label_count'               => _n_noop($data['label'] . ' <span class="count">(%s)</span>', $data['label'] . ' <span class="count">(%s)</span>'),
-        ));
-    }
-}
-```
+### A. Referensi Spesifikasi CPT & Status Resmi:
+* **CPT `motor`:** Terdaftar di `includes/post-types.php` dengan kapabilitas `manage_ryokourent_settings`.
+* **CPT `penyewaan`:** Terdaftar di `includes/post-types.php` dengan `public => false` dan kapabilitas `manage_ryokourent_bookings`.
+* **Custom Post Status:** Didaftarkan dengan `public => false`, `exclude_from_search => true`, dan slug di bawah 20 karakter (`status_menunggu`, `status_dikonfirmasi`, `status_berjalan`, `status_selesai`, `status_dibatalkan`). Status disematkan ke antarmuka edit melalui dropdown metabox dan filter `wp_insert_post_data`.
 
 ### B. Skema Field ACF CPT "Penyewaan":
 * `customer_name` (Text): Nama pelanggan sesuai KTP

@@ -65,9 +65,9 @@ Dokumen ini berisi rincian urutan 30 task proyek Ryokourent sesuai dengan arsite
 * **File yang Dibuat/Diubah:**
   * `wp-content/plugins/ryokourent-core/includes/meta-boxes.php`
 * **Dependensi:** TASK-004.
-* **Kriteria Selesai:** Meta box muncul rapi di halaman edit CPT `motor`, data tersimpan dengan aman dengan verifikasi nonce dan sanitasi.
-* **Cara Pengujian:** Isi semua field pada form edit motor, simpan post, muat ulang halaman, pastikan data tersimpan persisten.
-* **Risiko:** Kesalahan sanitasi field array plat nomor.
+* **Kriteria Selesai:** Meta box muncul rapi di halaman edit CPT `motor`. Tersedia guard `DOING_AUTOSAVE`, verifikasi nonce `wp_verify_nonce`, pemeriksaan hak akses `current_user_can('edit_post', $post_id)` serta pengecekan `manage_ryokourent_settings` untuk pengubahan tarif & kuota fisik. Sanitasi plat nomor per baris secara ketat.
+* **Cara Pengujian:** Isi semua field pada form edit motor, simpan post, muat ulang halaman, pastikan data tersimpan persisten. Coba simpan sebagai user non-admin; pastikan perubahan ditolak.
+* **Risiko:** Kesalahan sanitasi field array plat nomor jika ada karakter ilegal.
 
 ---
 
@@ -108,126 +108,131 @@ Dokumen ini berisi rincian urutan 30 task proyek Ryokourent sesuai dengan arsite
 ---
 
 ### TASK-009: Buat Custom Post Type `penyewaan`
-* **Tujuan:** Mendaftarkan CPT `penyewaan` (internal admin) untuk menampung riwayat pesanan booking dari website.
+* **Tujuan:** Mendaftarkan CPT `penyewaan` (internal admin) untuk menampung riwayat pesanan booking dari website dengan kapabilitas terproteksi.
 * **File yang Dibuat/Diubah:**
   * `wp-content/plugins/ryokourent-core/includes/post-types.php`
   * `wp-content/plugins/ryokourent-core/includes/meta-boxes.php`
 * **Dependensi:** TASK-004.
-* **Kriteria Selesai:** Menu "Penyewaan Motor" muncul di sidebar dengan ikon kalender, private untuk non-admin/operator.
-* **Cara Pengujian:** Masuk ke menu Penyewaan, pastikan interface admin siap menampilkan daftar pesanan.
+* **Kriteria Selesai:** Menu "Penyewaan Motor" muncul di sidebar dengan ikon kalender, `public => false`, `show_in_rest => false`. Hak akses dipetakan ke custom capability `manage_ryokourent_bookings` sehingga Author, Editor, dan Contributor biasa tidak dapat mengintip PII penyewa (KTP, nomor telepon, alamat).
+* **Cara Pengujian:** Masuk ke menu Penyewaan sebagai Administrator dan Operator; uji akses langsung URL sebagai Author (harus 403 Forbidden).
 * **Risiko:** Data pelanggan terekspos ke feed RSS atau REST API publik jika parameter `public` salah diset.
 
 ---
 
 ### TASK-010: Buat Status Booking Kustom
-* **Tujuan:** Mendaftarkan post status kustom: `status_menunggu`, `status_dikonfirmasi`, `status_berjalan`, `status_selesai`, `status_dibatalkan`.
+* **Tujuan:** Mendaftarkan post status kustom: `status_menunggu`, `status_dikonfirmasi`, `status_berjalan`, `status_selesai`, `status_dibatalkan` dengan parameter aman (`public => false`).
 * **File yang Dibuat/Diubah:**
   * `wp-content/plugins/ryokourent-core/includes/post-types.php`
+  * `wp-content/plugins/ryokourent-core/includes/meta-boxes.php`
 * **Dependensi:** TASK-009.
-* **Kriteria Selesai:** Dropdown status pada CPT `penyewaan` memuat seluruh status kustom dengan label warna yang jelas.
-* **Cara Pengujian:** Simpan satu data booking dengan masing-masing status dan cek filter status di tabel admin.
-* **Risiko:** Status kustom tidak muncul pada filter tabel default WordPress.
+* **Kriteria Selesai:** Dropdown status pada metabox CPT `penyewaan` memuat seluruh status kustom dengan label warna yang jelas. Pengubahan status ditangani via filter `wp_insert_post_data` agar status kustom tidak ter-reset ke status default saat diedit dari WP-Admin. Seluruh slug status $\le 20$ karakter.
+* **Cara Pengujian:** Simpan satu data booking dengan masing-masing status, klik Update, muat ulang halaman, pastikan status bertahan dan filter status di tabel admin berfungsi.
+* **Risiko:** Status kustom tidak muncul pada filter tabel default WordPress jika parameter `show_in_admin_all_list` tidak diset.
 
 ---
 
 ### TASK-011: Buat Form Booking Dasar
-* **Tujuan:** Membangun formulir booking HTML5 yang bersih dan terstruktur mencakup 10 field sesuai blueprint dan tombol WhatsApp.
+* **Tujuan:** Membangun formulir booking HTML5 yang bersih dan terstruktur mencakup seluruh field identitas, pilihan rute (Malang/Batu vs Trip Bromo dengan kuncian unit CRF 150L), proteksi honeypot (`ryokourent_hp`), dan tombol submit WhatsApp.
 * **File yang Dibuat/Diubah:**
   * `wp-content/plugins/ryokourent-core/public/forms.php`
   * `wp-content/plugins/ryokourent-core/public/shortcodes.php`
 * **Dependensi:** TASK-005.
-* **Kriteria Selesai:** Shortcode `[ryokou_booking_form]` merender formulir booking lengkap dan responsif di smartphone.
-* **Cara Pengujian:** Buka halaman booking di mobile viewport, periksa ketersediaan seluruh input field.
+* **Kriteria Selesai:** Shortcode `[ryokou_booking_form]` merender formulir booking lengkap dan responsif di smartphone. Field honeypot tersembunyi dari pengguna biasa. Pilihan rute Bromo otomatis mengunci dropdown motor hanya pada CRF 150L.
+* **Cara Pengujian:** Buka halaman booking di mobile viewport, uji pilih rute Bromo dan periksa perubahan pilihan motor.
 * **Risiko:** Input form terlalu panjang untuk pengguna smartphone jika tidak ditata rapi.
 
 ---
 
-### TASK-012: Buat Validasi Data Pelanggan
-* **Tujuan:** Memvalidasi nama pelanggan, nomor WhatsApp (format Indonesia), nomor kontak darurat keluarga, dan alamat menginap baik di sisi client (JS) maupun sisi server (PHP).
+### TASK-012: Buat Validasi Data Pelanggan & Anti-Spam
+* **Tujuan:** Memvalidasi nama pelanggan, nomor WhatsApp (format Indonesia `08...`), nomor kontak darurat keluarga (berbeda dari kontak utama), honeypot anti-spam, dan pembatasan laju pengiriman (rate-limiting via transient per IP).
 * **File yang Dibuat/Diubah:**
   * `wp-content/plugins/ryokourent-core/includes/booking.php`
   * `wp-content/plugins/ryokourent-core/assets/js/ryokourent-booking.js`
 * **Dependensi:** TASK-011.
-* **Kriteria Selesai:** Form menolak nomor HP tidak valid (kurang dari 10 digit atau bukan format angka) dan wajib menyertakan kontak darurat yang berbeda dari kontak utama.
-* **Cara Pengujian:** Kirim form dengan data dummy salah; pastikan muncul pesan error spesifik dan tidak dapat disubmit.
-* **Risiko:** Validasi nomor HP terlalu ketat hingga menolak nomor dengan spasi atau tanda hubung.
+* **Kriteria Selesai:** Form menolak nomor HP tidak valid (kurang dari 10 digit atau bukan format seluler Indonesia). Bot yang mengisi field honeypot langsung ditolak dengan status HTTP 400.
+* **Cara Pengujian:** Kirim form dengan data dummy salah atau honeypot terisi; pastikan submit gagal dengan pesan spesifik.
+* **Risiko:** Validasi nomor HP terlalu ketat hingga menolak nomor dengan spasi atau tanda hubung (gunakan normalisasi preg_replace).
 
 ---
 
 ### TASK-013: Buat Kalkulasi Durasi Sewa
-* **Tujuan:** Menghitung selisih waktu sewa secara real-time berdasarkan tanggal & jam mulai serta tanggal & jam selesai.
+* **Tujuan:** Menghitung selisih waktu sewa secara real-time berdasarkan tanggal & jam mulai serta tanggal & jam selesai di zona waktu `Asia/Jakarta` (WIB).
 * **File yang Dibuat/Diubah:**
   * `wp-content/plugins/ryokourent-core/assets/js/ryokourent-booking.js`
   * `wp-content/plugins/ryokourent-core/includes/booking.php`
 * **Dependensi:** TASK-011.
-* **Kriteria Selesai:** UI menampilkan indikator "Durasi: X Hari (Y Jam)" secara instan saat pengguna mengubah tanggal/jam.
-* **Cara Pengujian:** Set waktu mulai 02/10/2026 08:30 dan selesai 04/10/2026 17:00, verifikasi kalkulasi menghasilkan 3 Hari (~57 Jam).
-* **Risiko:** Kesalahan perhitungan karena perbedaan zona waktu browser penyewa.
+* **Kriteria Selesai:** UI menampilkan indikator "Durasi: X Hari (Y Jam)" secara instan saat pengguna mengubah tanggal/jam. Jam wajib berada pada rentang operasional (07:00 – 23:00 WIB).
+* **Cara Pengujian:** Set waktu mulai 02/10/2026 08:30 dan selesai 04/10/2026 17:00, verifikasi kalkulasi menghasilkan 3 Hari (~56.5 Jam) dengan toleransi overtime 2 jam.
+* **Risiko:** Kesalahan perhitungan karena perbedaan zona waktu browser penyewa (selalu paksa zona WIB di server).
 
 ---
 
 ### TASK-014: Buat Kalkulasi Harga Harian, Mingguan, dan Bulanan
-* **Tujuan:** Membangun modul `pricing.php` untuk menghitung tarif sewa otomatis berdasarkan durasi total (paket harian 24 jam, mingguan 7 hari, bulanan 30 hari).
+* **Tujuan:** Membangun modul `pricing.php` untuk menghitung tarif sewa otomatis di sisi server (paket harian 24 jam dengan toleransi overtime 2 jam, paket mingguan 7 hari, bulanan 30 hari).
 * **File yang Dibuat/Diubah:**
   * `wp-content/plugins/ryokourent-core/includes/pricing.php`
 * **Dependensi:** TASK-013.
-* **Kriteria Selesai:** Estimasi total tarif muncul di preview form sebelum pengguna mengirim booking.
+* **Kriteria Selesai:** Server menghitung total tarif berdasarkan kombinasi termurah. Client hanya mengirim tanggal/jam; server tidak mempercayai data kiriman harga dari client. Harga placeholder/kosong ditolak dari booking instan dan diarahkan ke konsultasi WA.
 * **Cara Pengujian:** Jalankan unit test kalkulasi untuk sewa 1 hari, 3 hari, 7 hari, dan 35 hari.
-* **Risiko:** Perhitungan pembulatan jam overtime.
+* **Risiko:** Manipulasi harga di browser DevTools (teratasi karena server menghitung ulang secara independen).
 
 ---
 
 ### TASK-015: Buat Validasi Tanggal dan Jam (Operational Hours)
-* **Tujuan:** Membatasi pilihan jam sewa hanya pada jam operasional pool (07.00 – 23.00 WIB) dan mencegah pemilihan tanggal selesai sebelum tanggal mulai.
+* **Tujuan:** Membatasi pilihan jam sewa hanya pada jam operasional pool (07.00 – 23.00 WIB) dan mencegah pemilihan tanggal selesai sebelum tanggal mulai atau tanggal di masa lalu.
 * **File yang Dibuat/Diubah:**
   * `wp-content/plugins/ryokourent-core/includes/booking.php`
   * `wp-content/plugins/ryokourent-core/assets/js/ryokourent-booking.js`
 * **Dependensi:** TASK-013.
 * **Kriteria Selesai:** Input jam di luar 07.00 - 23.00 WIB ditolak dengan pemberitahuan jam operasional resmi.
-* **Cara Pengujian:** Pilih jam mulai 02:00 WIB atau tanggal selesai masa lalu; pastikan sistem memblokir submit.
-* **Risiko:** Inkonsistensi format 12 jam vs 24 jam di browser mobile.
+* **Cara Pengujian:** Kirim request dengan jam mulai 02:00 WIB atau tanggal selesai < tanggal mulai; pastikan server memblokir request.
+* **Risiko:** Format tanggal berbeda antara browser Android dan iOS (gunakan format ISO standar `Y-m-d H:i`).
 
 ---
 
-### TASK-016: Buat Validasi Ketersediaan Unit
-* **Tujuan:** Membangun mesin kueri `availability.php` untuk memeriksa sisa kuota unit fisik model motor pada rentang tanggal yang diminta.
+### TASK-016: Buat Validasi Ketersediaan Unit & Perlindungan Privasi Stok
+* **Tujuan:** Membangun mesin kueri `availability.php` untuk memeriksa sisa kuota unit fisik model motor pada rentang tanggal yang diminta tanpa membocorkan data kuota ke publik.
 * **File yang Dibuat/Diubah:**
   * `wp-content/plugins/ryokourent-core/includes/availability.php`
 * **Dependensi:** TASK-005, TASK-010.
-* **Kriteria Selesai:** Fungsi `ryokourent_check_availability($motor_id, $start, $end)` mengembalikan status `true`/`false` dan sisa kuota internal.
-* **Cara Pengujian:** Simulasikan 3 booking aktif pada motor yang memiliki stok 3; pastikan pengecekan berikutnya menghasilkan status penuh.
-* **Risiko:** Query lambat jika jumlah data booking besar (memerlukan index meta_query yang efisien).
+* **Kriteria Selesai:** Fungsi `ryokourent_check_availability($motor_id, $start, $end)` mengembalikan status `true`/`false`. Endpoint AJAX publik hanya mengembalikan boolean ketersediaan; kuota fisik internal tidak pernah diekspos ke publik.
+* **Cara Pengujian:** Simulasikan 3 booking aktif pada motor dengan stok 3; pastikan pengecekan berikutnya menghasilkan status `available: false`.
+* **Risiko:** Query lambat jika jumlah data booking besar (gunakan kueri efisien `fields => 'ids'`).
 
 ---
 
-### TASK-017: Buat Pencegahan Double Booking
-* **Tujuan:** Menerapkan penguncian logika saat submit pesanan agar tidak terjadi dua booking yang memotong kuota yang sama pada detik bersamaan.
+### TASK-017: Buat Pencegahan Double Booking Atomik (Dua Titik Kritis)
+* **Tujuan:** Menerapkan penguncian logika pada dua titik: (1) saat submit pesanan awal di web, dan (2) saat operator mengubah status menjadi `status_dikonfirmasi`.
 * **File yang Dibuat/Diubah:**
   * `wp-content/plugins/ryokourent-core/includes/availability.php`
   * `wp-content/plugins/ryokourent-core/includes/booking.php`
 * **Dependensi:** TASK-016.
-* **Kriteria Selesai:** Sistem memblokir pesanan jika saat validasi akhir kuota sudah habis terisi pesanan terkonfirmasi lain.
+* **Kriteria Selesai:** Dilengkapi fungsi `ryokourent_with_motor_lock($motor_id, $callback)` berbasis `GET_LOCK` MySQL untuk eksekusi atomik. Operator diblokir mengonfirmasi pesanan jika pada titik konfirmasi kuota sudah penuh terisi booking lain.
 * **Cara Pengujian:** Tes dua request bersamaan pada unit dengan sisa kuota 1; pastikan hanya satu yang lolos.
-* **Risiko:** Race condition database pada server dengan traffic tinggi.
+* **Risiko:** Deadlock jika lock tidak dilepas (selalu gunakan blok `finally { RELEASE_LOCK }`).
 
 ---
 
-### TASK-018: Buat Generator Pesan WhatsApp
-* **Tujuan:** Menyusun draf pesan WhatsApp resmi yang rapi, ber-emotikon terstruktur sesuai blueprint, dan menghasilkan URL `https://api.whatsapp.com/send?phone=...&text=...`.
+### TASK-018: Buat Generator Pesan WhatsApp Resmi
+* **Tujuan:** Menyusun draf pesan WhatsApp resmi yang rapi, ber-emotikon terstruktur, dan menghasilkan tautan resmi `https://wa.me/{nomor}?text={encoded_text}` dengan `rawurlencode()`.
 * **File yang Dibuat/Diubah:**
   * `wp-content/plugins/ryokourent-core/includes/whatsapp.php`
   * `wp-content/plugins/ryokourent-core/assets/js/ryokourent-booking.js`
 * **Dependensi:** TASK-011, TASK-014.
-* **Kriteria Selesai:** Live preview pesan WhatsApp di form terisi dinamis dan tombol mengarahkan ke WhatsApp dengan pesan siap kirim.
+* **Kriteria Selesai:** Live preview pesan WhatsApp di form terisi dinamis dan tombol mengarahkan ke WhatsApp dengan pesan siap kirim. Nomor tujuan diambil dari pengaturan server (bukan dari client).
 * **Cara Pengujian:** Isi formulir secara lengkap, klik tombol, cek teks yang muncul di aplikasi WhatsApp Web/Mobile.
-* **Risiko:** Karakter khusus atau baris baru rusak saat di-URL-encode di perangkat tertentu.
+* **Risiko:** Teks terpotong jika karakter khusus tidak di-encode dengan `rawurlencode()`.
 
 ---
 
-### TASK-019: Buat Penyimpanan Booking (AJAX & Nonce Handler)
-* **Tujuan:** Menyimpan data formulir ke CPT `penyewaan` dengan status `status_menunggu` dan kode unik `RYK-...` secara asynchronous saat pengguna mengklik kirim ke WhatsApp.
+### TASK-019: Buat Penyimpanan Booking (AJAX & Nonce Handler Kompatibel Cache)
+* **Tujuan:** Menyimpan data formulir ke CPT `penyewaan` dengan status `status_menunggu` dan kode unik `RYK-...` secara asynchronous via hook `wp_ajax_ryokourent_process_booking` dan `wp_ajax_nopriv_ryokourent_process_booking`.
 * **File yang Dibuat/Diubah:**
   * `wp-content/plugins/ryokourent-core/includes/booking.php`
+* **Dependensi:** TASK-017, TASK-018.
+* **Kriteria Selesai:** Formulir dapat dikirim oleh pengunjung yang belum login (`nopriv`). Kompatibel dengan LiteSpeed Cache/WP Rocket melalui AJAX nonce fetcher atau pengecualian cache pada halaman booking.
+* **Cara Pengujian:** Uji submit form sebagai pengunjung tanpa login (incognito mode) saat halaman dalam kondisi ter-cache.
+* **Risiko:** Nonce invalid (-1 / 403) pada halaman yang ter-cache lama.
 * **Dependensi:** TASK-017, TASK-018.
 * **Kriteria Selesai:** Data booking langsung masuk ke WP-Admin sebelum jendela WhatsApp terbuka, dengan respons JSON status sukses.
 * **Cara Pengujian:** Submit booking dari frontend, periksa daftar post pada CPT `penyewaan` di backend.
@@ -236,13 +241,13 @@ Dokumen ini berisi rincian urutan 30 task proyek Ryokourent sesuai dengan arsite
 ---
 
 ### TASK-020: Buat Role Operator
-* **Tujuan:** Mendaftarkan peran user WordPress baru `ryokou_operator` dengan hak akses terbatas pada menu operasional harian rental motor.
+* **Tujuan:** Mendaftarkan peran user WordPress baru `ryokourent_operator` dengan hak akses terbatas pada menu operasional harian rental motor.
 * **File yang Dibuat/Diubah:**
   * `wp-content/plugins/ryokourent-core/includes/user-roles.php`
 * **Dependensi:** TASK-009.
-* **Kriteria Selesai:** Role `Ryokou Operator` dapat dipilih saat membuat user baru di WP-Admin.
+* **Kriteria Selesai:** Role `Ryokourent Operator` terdaftar resmi dengan kapabilitas `read` dan `manage_ryokourent_bookings`. Role tidak memiliki hak edit tema, plugin, atau pengaturan harga.
 * **Cara Pengujian:** Buat user dengan role operator dan uji login.
-* **Risiko:** Role tidak terhapus bersih saat deactivasi jika tidak di-handle dengan rapi.
+* **Risiko:** Role tidak terhapus bersih saat deaktivasi jika tidak di-handle dengan rapi.
 
 ---
 
@@ -259,38 +264,39 @@ Dokumen ini berisi rincian urutan 30 task proyek Ryokourent sesuai dengan arsite
 ---
 
 ### TASK-022: Buat Dashboard Booking & Operasional Armada
-* **Tujuan:** Membuat halaman ringkasan operasional di WP-Admin yang menampilkan metrik: Unit Disewa Hari Ini, Booking Menunggu Konfirmasi, Unit Siap di Pool Dinoyo, Unit Siap di Pool Batu.
+* **Tujuan:** Membuat halaman ringkasan operasional di WP-Admin yang menampilkan metrik: Unit Disewa Hari Ini, Booking Menunggu Konfirmasi, Unit Aktif per Lokasi Pool resmi (`ryokourent_get_pool_locations`), dan statistik berkala yang di-cache menggunakan transient.
 * **File yang Dibuat/Diubah:**
   * `wp-content/plugins/ryokourent-core/admin/dashboard.php`
   * `wp-content/plugins/ryokourent-core/admin/booking-columns.php`
 * **Dependensi:** TASK-010, TASK-019.
-* **Kriteria Selesai:** Dashboard menampilkan kartu statistik real-time dan quick actions untuk konfirmasi pesanan.
+* **Kriteria Selesai:** Dashboard menampilkan kartu statistik cepat tanpa query `posts_per_page => -1` (menggunakan query `fields => 'ids'` dan transient caching 5-10 menit).
 * **Cara Pengujian:** Buka menu Dashboard Ryokou, verifikasi sinkronisasi angka dengan data CPT `penyewaan`.
 * **Risiko:** Beban kueri jika tidak menggunakan transient caching untuk statistik dashboard.
 
 ---
 
-### TASK-023: Buat Perubahan Status Booking (Quick Actions)
-* **Tujuan:** Memfasilitasi alur kerja operator untuk mengubah status booking secara cepat (Menunggu -> Dikonfirmasi -> Berjalan -> Selesai -> Dibatalkan) serta mencatat plat nomor motor yang diserahkan.
+### TASK-023: Buat Perubahan Status Booking (Quick Actions & Validasi Plat)
+* **Tujuan:** Memfasilitasi alur kerja operator untuk mengubah status booking secara aman (Menunggu -> Dikonfirmasi -> Berjalan -> Selesai -> Dibatalkan) dengan cek ulang ketersediaan kuota dan validasi plat nomor motor yang diserahkan.
 * **File yang Dibuat/Diubah:**
   * `wp-content/plugins/ryokourent-core/admin/booking-columns.php`
   * `wp-content/plugins/ryokourent-core/includes/booking.php`
 * **Dependensi:** TASK-022.
-* **Kriteria Selesai:** Operator dapat mengubah status langsung dari tabel admin dan menginput plat nomor kendaraan.
-* **Cara Pengujian:** Ubah status booking dari daftar tabel; pastikan badge warna dan kuota armada terbarui.
-* **Risiko:** Operator lupa menginput plat nomor motor.
+* **Kriteria Selesai:** Quick action dilindungi nonce `check_admin_referer` dan capability `manage_ryokourent_bookings`. Saat status diubah ke `status_dikonfirmasi`, sistem memverifikasi `ryokourent_count_overlapping` dan menolak perubahan jika kuota penuh. Plat nomor divalidasi: harus terdaftar pada model motor tersebut dan tidak bertabrakan dengan sewa aktif lain.
+* **Cara Pengujian:** Coba konfirmasi booking ketika unit sudah terisi penuh; pastikan sistem menolak dengan pesan peringatan kuota habis.
+* **Risiko:** Alokasi plat nomor ganda pada waktu sewa yang sama jika validasi tumpang tindih terlewat.
 
 ---
 
 ### TASK-024: Buat Pengaturan Harga dan Nomor WhatsApp (Admin Settings)
-* **Tujuan:** Membuat antarmuka pengaturan untuk nomor WhatsApp admin resmi, teks default, jam operasional, dan fitur multi-update harga (bulk price adjustment nominal/persentase untuk peak season).
+* **Tujuan:** Membuat antarmuka pengaturan admin (`manage_ryokourent_settings`) untuk nomor WhatsApp admin resmi, teks default, jam operasional, dan fitur multi-update harga (bulk price adjustment nominal/persentase untuk peak season).
 * **File yang Dibuat/Diubah:**
   * `wp-content/plugins/ryokourent-core/admin/admin-settings.php`
   * `wp-content/plugins/ryokourent-core/includes/settings.php`
+  * `wp-content/plugins/ryokourent-core/includes/pricing.php`
 * **Dependensi:** TASK-014, TASK-021.
-* **Kriteria Selesai:** Admin dapat mengubah nomor tujuan WhatsApp dan menerapkan kenaikan harga bulk per kategori motor.
-* **Cara Pengujian:** Naikkan harga kategori BeAT +10.000 melalui bulk update, periksa perubahan harga pada katalog.
-* **Risiko:** Salah input formula persentase yang merusak data harga master.
+* **Kriteria Selesai:** Dilindungi nonce `check_admin_referer` dan capability `manage_ryokourent_settings`. Admin dapat mengubah nomor tujuan WhatsApp dan menerapkan penyesuaian harga bulk per kategori motor. Penyesuaian memiliki batas nilai angka (tidak boleh menghasilkan harga $\le 0$ atau persentase ekstrem $> 200\%$).
+* **Cara Pengujian:** Naikkan harga kategori BeAT +10.000 melalui bulk update, periksa perubahan harga pada katalog. Uji input angka negatif atau tidak valid; pastikan ditolak.
+* **Risiko:** Salah input formula persentase yang merusak data harga master jika tidak divalidasi batasnya.
 
 ---
 
@@ -354,11 +360,12 @@ Dokumen ini berisi rincian urutan 30 task proyek Ryokourent sesuai dengan arsite
 ---
 
 ### TASK-030: Buat Panduan Deployment & Checklist Produksi
-* **Tujuan:** Menyusun dokumentasi deployment lengkap ke server hosting (LiteSpeed / Nginx), konfigurasi SSL, cache rules, konfigurasi permalink, backup otomatis, dan prosedur rollback.
+* **Tujuan:** Menyusun dokumentasi deployment lengkap ke server hosting (LiteSpeed / Nginx), konfigurasi SSL, cache rules, konfigurasi permalink (flush rewrite otomatis di activation hook), backup otomatis, dan prosedur rollback. Memastikan direktori `tests/` dikecualikan dari paket rilis produksi dan `uninstall.php` memverifikasi konstanta `WP_UNINSTALL_PLUGIN`.
 * **File yang Dibuat/Diubah:**
   * `docs/DEPLOYMENT_GUIDE.md`
   * `README.md`
+  * `.gitattributes`
 * **Dependensi:** TASK-028, TASK-029.
-* **Kriteria Selesai:** Checklist pra-produksi lengkap dan siap dieksekusi untuk go-live.
+* **Kriteria Selesai:** Checklist pra-produksi lengkap dan siap dieksekusi untuk go-live tanpa meninggalkan berkas pengujian di server publik.
 * **Cara Pengujian:** Lakukan simulasi dry-run deployment di staging server.
 * **Risiko:** Perbedaan konfigurasi environment staging vs production.
