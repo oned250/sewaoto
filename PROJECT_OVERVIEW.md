@@ -42,4 +42,4 @@
 * **Jam Operasional:** Booking dan serah terima unit dilayani antara pukul 07.00 – 23.00 WIB.
 * **Batas Wilayah Layanan:** Penggunaan motor terbatas di Malang Raya & Kota Batu. Penggunaan keluar wilayah wajib persetujuan tertulis dari Admin.
 * **Aturan Keras Bromo:** Unit matik (BeAT, Scoopy, Vario) **dilarang keras** memasuki lautan pasir Bromo. Trip Bromo wajib menyewa Honda Trail CRF 150L.
-* **Kelengkapan Sewa:** Setiap persewaan sudah mencakup 2 Helm SNI bersih dan 2 Jas Hujan.
+* **Kelengkapan Sewa:** Setiap persewaan sudah mencakup 2 Helm SNI bersih dan  Jas Hujan.
