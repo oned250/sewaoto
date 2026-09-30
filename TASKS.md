@@ -41,14 +41,22 @@ Dokumen ini berisi rincian urutan 30 task proyek Ryokourent sesuai dengan arsite
 
 ---
 
-### TASK-004: Buat Custom Post Type `motor`
-* **Tujuan:** Mendaftarkan CPT `motor` untuk mengelola data katalog armada dengan dukungan judul, editor deskripsi, gambar thumbnail, dan custom fields.
+### TASK-004: Buat Custom Post Type `motor` [DONE]
+* **Status:** Selesai (DONE) - 2026-09-30
+* **Tujuan:** Mendaftarkan CPT `motor` untuk mengelola data katalog armada dengan dukungan judul, editor deskripsi, gambar thumbnail, excerpt, REST API Gutenberg, skema meta fields (`_ryokou_*`), sanitasi input, escaping output, capability check, serta kustomisasi kolom admin list table.
 * **File yang Dibuat/Diubah:**
   * `wp-content/plugins/ryokourent-core/includes/post-types.php`
+  * `wp-content/plugins/ryokourent-core/includes/meta-fields.php`
+  * `wp-content/plugins/ryokourent-core/admin/motor-columns.php`
+  * `wp-content/plugins/ryokourent-core/tests/test-cpt-motor.php`
 * **Dependensi:** TASK-003.
-* **Kriteria Selesai:** Menu "Armada Motor" muncul di sidebar WP-Admin dengan ikon mobil/motor (`dashicons-car`).
-* **Cara Pengujian:** Buka WP-Admin, klik "Armada Motor" -> "Tambah Motor Baru", buat post motor contoh dan simpan.
-* **Risiko:** Konflik slug rewrite permalink.
+* **Kriteria Selesai:** CPT `motor` terdaftar dengan slug `motor`, menu "Armada Motor" di sidebar WP-Admin dengan ikon `dashicons-car`, skema 10 meta fields terdaftar aman dengan sanitasi, kolom admin menampilkan foto, spesifikasi, harga harian, stok, rute bromo, dan status badge.
+* **Cara Pengujian:**
+  1. Buka dashboard WP-Admin -> Menu sidebar "Armada Motor".
+  2. Klik "Tambah Motor Baru", masukkan judul armada (misal "Honda BeAT Deluxe"), deskripsi rute, dan foto unggulan.
+  3. Verifikasi daftar armada menampilkan kolom: Foto, Model Motor, Spesifikasi Mesin, Tarif Harian, Unit Fisik, Rute Bromo, Status Publik, dan Tanggal.
+  4. Uji pengurutan kolom berdasarkan Tarif Harian dan Unit Fisik.
+* **Risiko:** Konflik slug rewrite permalink jika belum melakukan flush rewrite rules pada WP-Admin -> Settings -> Permalinks.
 
 ---
 
