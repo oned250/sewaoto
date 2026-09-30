@@ -1,0 +1,53 @@
+/*
+Theme Name:        GeneratePress Child - Ryokourent
+Theme URI:         https://github.com/oned250/sewaoto
+Description:       Mobile-first modern dark responsive child theme for Ryokourent (Rental Motor Malang & Batu).
+Author:            Ryokourent Dev Team
+Author URI:        https://github.com/oned250
+Template:          generatepress
+Version:           1.0.0
+License:           GNU General Public License v2 or later
+License URI:       http://www.gnu.org/licenses/gpl-2.0.html
+Text Domain:       generatepress-child
+*/
+
+/* ==========================================================================
+   Ryokourent Variables & Modern Dark Base Styling
+   ========================================================================== */
+
+:root {
+  --ryokou-bg-dark: #0b1120;
+  --ryokou-card-dark: #162032;
+  --ryokou-border-dark: #223249;
+  --ryokou-primary-accent: #f59e0b;       /* Energetic Amber/Orange */
+  --ryokou-primary-hover: #d97706;
+  --ryokou-whatsapp-green: #25d366;
+  --ryokou-whatsapp-hover: #128c7e;
+  --ryokou-text-main: #f8fafc;
+  --ryokou-text-muted: #94a3b8;
+  --ryokou-font-base: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+body {
+  font-family: var(--ryokou-font-base);
+  background-color: var(--ryokou-bg-dark);
+  color: var(--ryokou-text-main);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Container constraints for clean presentation */
+.ryokou-container {
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+/* Mobile responsive utilities */
+@media (max-width: 768px) {
+  .ryokou-container {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+}
