@@ -17,9 +17,9 @@ Dokumen ini melacak status pengerjaan sesi, task aktif, dependensi yang telah te
   - `feature/availability` (Fitur pencegahan double booking & pengecekan stok unit)
   - `feature/whatsapp` (Fitur generator draft pesan & URL WhatsApp)
   - `feature/admin-dashboard` (Fitur dashboard admin & pelaporan operasional)
-* **Task Terakhir Selesai:** `TASK-004: Buat Custom Post Type motor`
+* **Task Terakhir Selesai:** `TASK-005: Buat Field Data Motor (Metabox Spesifikasi & Kuota)`
 * **Status Task Terakhir:** **DONE (SELESAI)**
-* **Task Selanjutnya:** `TASK-005: Buat Field Data Motor (Metabox Spesifikasi & Kuota)`
+* **Task Selanjutnya:** `TASK-006: Buat Taxonomy Kategori Motor`
 
 ---
 
@@ -31,12 +31,33 @@ Dokumen ini melacak status pengerjaan sesi, task aktif, dependensi yang telah te
 | **TASK-002** | Struktur Repository & Kerangka Proyek | FASE 1 | **DONE** | TASK-001 | 2026-09-30 |
 | **TASK-003** | Plugin Loader & Helper Dasar | FASE 2 | **DONE** | TASK-002 | 2026-09-30 |
 | **TASK-004** | Custom Post Type `motor` | FASE 2 | **DONE** | TASK-003 | 2026-09-30 |
-| **TASK-005** | Metabox Spesifikasi & Kuota Motor | FASE 2 | **PENDING** | TASK-004 | - |
+| **TASK-005** | Metabox Spesifikasi & Kuota Motor | FASE 2 | **DONE** | TASK-004 | 2026-09-30 |
 | **TASK-006** | Taxonomy Kategori Motor | FASE 2 | **PENDING** | TASK-004 | - |
 
 ---
 
-## 3. Komponen yang Telah Diimplementasikan pada TASK-004
+## 3. Komponen yang Telah Diimplementasikan pada TASK-005
+
+1. **Metabox Spesifikasi & Karakter Armada (`ryokourent_motor_specs_metabox`):**
+   - Field Kapasitas Mesin (`_ryokou_engine_cc`), Transmisi (`_ryokou_transmission`), Karakter Rute (`_ryokou_route_character`).
+   - Checkbox Bromo Ready (`_ryokou_is_bromo_ready`) dengan pesan peringatan keras bahwa rute Bromo hanya untuk unit Trail CRF 150L.
+   - Badge Status Publik (`_ryokou_status_label`: Tersedia, Booking Menipis, Penuh).
+2. **Metabox Tarif Sewa Armada (`ryokourent_motor_pricing_metabox`):**
+   - Field Tarif Harian 24 Jam (`_ryokou_price_daily`), Mingguan 7 Hari (`_ryokou_price_weekly`), Bulanan 30 Hari (`_ryokou_price_monthly`).
+   - Proteksi hak akses: Hanya Administrator (`manage_ryokourent_settings` / `manage_options`) yang dapat mengedit tarif; untuk Operator field terkunci otomatis (*disabled*).
+3. **Metabox Inventaris Unit Fisik & Plat Nomor (`ryokourent_motor_stock_metabox`):**
+   - Total Unit Fisik (`_ryokou_physical_stock`) dan Daftar Plat Nomor Kendaraan (`_ryokou_plate_numbers`).
+   - Tertutup dari REST API publik (`show_in_rest => false`), sanitasi pembersihan plat nomor huruf kapital per baris.
+   - Proteksi hak akses Administrator (`manage_ryokourent_settings`).
+4. **Keamanan & Guard Penyimpanan (`ryokourent_save_motor_meta_data`):**
+   - Guard `DOING_AUTOSAVE`.
+   - Verifikasi nonce `wp_verify_nonce($_POST['ryokourent_motor_meta_nonce'], 'ryokourent_save_motor_meta_action')`.
+   - Validasi `post_type === 'motor'` dan `current_user_can('edit_post', $post_id)`.
+   - Validasi hak akses khusus untuk field sensitif (harga & kuota fisik).
+
+---
+
+## 4. Komponen yang Telah Diimplementasikan pada TASK-004
 
 1. **Custom Post Type `motor` (`includes/post-types.php`):**
    - Registrasi CPT `motor` dengan label bahasa Indonesia lengkap.

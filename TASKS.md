@@ -60,14 +60,22 @@ Dokumen ini berisi rincian urutan 30 task proyek Ryokourent sesuai dengan arsite
 
 ---
 
-### TASK-005: Buat Field Data Motor (Metabox Spesifikasi & Kuota)
+### TASK-005: Buat Field Data Motor (Metabox Spesifikasi & Kuota) [DONE]
+* **Status:** Selesai (DONE) - 2026-09-30
 * **Tujuan:** Menambahkan meta box kustom untuk menyimpan kapasitas mesin (cc), transmisi, karakter rute, penanda khusus Bromo, tarif harian/mingguan/bulanan, dan kuota unit fisik serta daftar plat nomor.
 * **File yang Dibuat/Diubah:**
   * `wp-content/plugins/ryokourent-core/includes/meta-boxes.php`
+  * `wp-content/plugins/ryokourent-core/tests/test-meta-boxes.php`
 * **Dependensi:** TASK-004.
-* **Kriteria Selesai:** Meta box muncul rapi di halaman edit CPT `motor`. Tersedia guard `DOING_AUTOSAVE`, verifikasi nonce `wp_verify_nonce`, pemeriksaan hak akses `current_user_can('edit_post', $post_id)` serta pengecekan `manage_ryokourent_settings` untuk pengubahan tarif & kuota fisik. Sanitasi plat nomor per baris secara ketat.
-* **Cara Pengujian:** Isi semua field pada form edit motor, simpan post, muat ulang halaman, pastikan data tersimpan persisten. Coba simpan sebagai user non-admin; pastikan perubahan ditolak.
-* **Risiko:** Kesalahan sanitasi field array plat nomor jika ada karakter ilegal.
+* **Kriteria Selesai:** Tiga panel meta box muncul rapi di halaman edit CPT `motor` (Spesifikasi & Karakter, Tarif Sewa, Inventaris Unit Fisik). Dilengkapi guard `DOING_AUTOSAVE`, verifikasi nonce `ryokourent_motor_meta_nonce`, pemeriksaan hak akses `current_user_can('edit_post', $post_id)` serta pengecekan `manage_ryokourent_settings` untuk pengubahan tarif & kuota fisik. Sanitasi plat nomor per baris secara ketat dan normalisasi kapital.
+* **Cara Pengujian:**
+  1. Buka dashboard WP-Admin -> Armada Motor -> Tambah Motor Baru (atau Edit motor yang ada).
+  2. Isi field: Kapasitas Mesin (`110`), Transmisi (`Otomatis (CVT)`), Karakter Rute (`Lincah & Sangat Irit`), Status Publik (`Tersedia`).
+  3. Masukkan Tarif Harian (`85000`), Mingguan (`500000`), Bulanan (`1600000`).
+  4. Masukkan Total Unit Fisik (`5`) dan daftar plat nomor (misal `N 1234 ABC` dan `N 5678 DEF` satu per baris).
+  5. Klik "Terbitkan" atau "Perbarui"; muat ulang halaman dan pastikan seluruh nilai tersimpan persisten.
+  6. Login sebagai operator non-admin; pastikan field tarif dan kuota fisik berstatus *disabled* dan tidak dapat diubah.
+* **Risiko:** Kesalahan sanitasi field array plat nomor jika ada karakter ilegal (teratasi dengan normalisasi preg_replace huruf besar, angka, dan spasi tunggal).
 
 ---
 

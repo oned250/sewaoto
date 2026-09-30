@@ -17,6 +17,10 @@ Format penulisan berpedoman pada [Keep a Changelog](https://keepachangelog.com/i
   - Penyusunan `DECISIONS.md` mendokumentasikan 7 Architectural Decision Records (ADR-001 s/d ADR-007).
   - Penyusunan `TESTING.md` memetakan 20 skenario uji (TC-001 s/d TC-020).
   - Penyusunan `.env.example` dan `CONFIG.example.php`.
+- **Fase 2 (TASK-005: Field Data Motor & Metabox):**
+  - Pembuatan file `wp-content/plugins/ryokourent-core/includes/meta-boxes.php` yang menyediakan 3 panel metabox pada form edit CPT `motor`: panel Spesifikasi & Karakter Rute, panel Tarif Sewa (harian, mingguan, bulanan), dan panel Inventaris Unit Fisik & Plat Nomor.
+  - Penerapan proteksi guard `DOING_AUTOSAVE`, verifikasi nonce `ryokourent_motor_meta_nonce`, dan pembatasan hak akses berbasis role (Operator hanya dapat mengubah spesifikasi, sedangkan perubahan tarif sewa dan kuota fisik internal dikunci hanya untuk Administrator).
+  - Pembuatan file automated unit test `wp-content/plugins/ryokourent-core/tests/test-meta-boxes.php` untuk memverifikasi seluruh skenario keamanan, autosave guard, boundary capability, dan sanitasi data.
 - **Fase 2 (TASK-004: Custom Post Type Motor & Meta Fields):**
   - Pembuatan file `wp-content/plugins/ryokourent-core/includes/post-types.php` untuk pendaftaran CPT `motor` (Armada Motor), dukungan Gutenberg REST API, arsip `motor`, thumbnail, excerpt, dan custom updated messages.
   - Pembuatan file `wp-content/plugins/ryokourent-core/includes/meta-fields.php` untuk registrasi skema WordPress `register_post_meta()` untuk 10 atribut CPT `motor` (`_ryokou_engine_cc`, `_ryokou_transmission`, `_ryokou_route_character`, `_ryokou_is_bromo_ready`, `_ryokou_price_daily`, `_ryokou_price_weekly`, `_ryokou_price_monthly`, `_ryokou_physical_stock`, `_ryokou_plate_numbers`, `_ryokou_status_label`) dilengkapi fungsi sanitasi dan validasi capability.
