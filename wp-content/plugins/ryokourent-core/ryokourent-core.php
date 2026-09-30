@@ -32,7 +32,7 @@ if (!defined('RYOKOURENT_TIMEZONE')) {
 }
 
 if (!defined('RYOKOURENT_DEFAULT_WA_NUMBER')) {
-    define('RYOKOURENT_DEFAULT_WA_NUMBER', '6281234567890');
+    define('RYOKOURENT_DEFAULT_WA_NUMBER', '62895384017772');
 }
 
 // -----------------------------------------------------------------------------
