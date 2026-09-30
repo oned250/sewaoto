@@ -342,3 +342,366 @@ function ryokourent_save_motor_meta_data($post_id) {
     }
 }
 add_action('save_post_motor', 'ryokourent_save_motor_meta_data');
+
+/**
+ * Register meta boxes for CPT 'penyewaan' (Data Penyewaan Motor).
+ *
+ * @since 1.0.0
+ * @return void
+ */
+function ryokourent_add_booking_meta_boxes() {
+    add_meta_box(
+        'ryokourent_booking_status_metabox',
+        __('Status Pemesanan Sewa', 'ryokourent'),
+        'ryokourent_render_booking_status_metabox',
+        'penyewaan',
+        'side',
+        'high'
+    );
+
+    add_meta_box(
+        'ryokourent_booking_customer_metabox',
+        __('Data Identitas Pelanggan (PII Terproteksi)', 'ryokourent'),
+        'ryokourent_render_booking_customer_metabox',
+        'penyewaan',
+        'normal',
+        'high'
+    );
+
+    add_meta_box(
+        'ryokourent_booking_details_metabox',
+        __('Rincian Armada, Jadwal Sewa & Alokasi Plat', 'ryokourent'),
+        'ryokourent_render_booking_details_metabox',
+        'penyewaan',
+        'normal',
+        'high'
+    );
+}
+add_action('add_meta_boxes_penyewaan', 'ryokourent_add_booking_meta_boxes');
+
+/**
+ * Render Booking Status Meta Box.
+ *
+ * Provides custom status selector and indicators for CPT 'penyewaan'.
+ *
+ * @since 1.0.0
+ * @param WP_Post $post Current post object.
+ * @return void
+ */
+function ryokourent_render_booking_status_metabox($post) {
+    wp_nonce_field('ryokourent_save_booking_meta_action', 'ryokourent_booking_meta_nonce');
+
+    $current_status = $post->post_status;
+    $statuses = function_exists('ryokourent_get_booking_statuses') ? ryokourent_get_booking_statuses() : array();
+
+    // Default status if empty or new post
+    if (empty($current_status) || $current_status === 'auto-draft' || !array_key_exists($current_status, $statuses)) {
+        $current_status = 'status_menunggu';
+    }
+
+    $current_info = isset($statuses[$current_status]) ? $statuses[$current_status] : null;
+    ?>
+    <div class="ryokourent-metabox-wrapper">
+        <p style="margin-top:0;">
+            <label for="ryokourent_booking_status" style="font-weight:600; display:block; margin-bottom:6px;">
+                <?php esc_html_e('Pilih Status Pesanan:', 'ryokourent'); ?>
+            </label>
+            <select name="ryokourent_booking_status" id="ryokourent_booking_status" class="widefat" style="font-size:14px; font-weight:600; padding:6px 8px;">
+                <?php foreach ($statuses as $slug => $data) : ?>
+                    <option value="<?php echo esc_attr($slug); ?>" <?php selected($current_status, $slug); ?>>
+                        <?php echo esc_html($data['label']); ?>
+                        <?php echo $data['counts_quota'] ? ' [Kunci Kuota]' : ''; ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </p>
+
+        <?php if ($current_info) : ?>
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-left:4px solid <?php echo esc_attr($current_info['color']); ?>; padding:10px; border-radius:4px; margin-top:10px;">
+                <strong style="color:<?php echo esc_attr($current_info['color']); ?>; display:block; font-size:12px; text-transform:uppercase; margin-bottom:4px;">
+                    <?php echo esc_html($current_info['label']); ?>
+                </strong>
+                <p style="margin:0; font-size:12px; color:#475569; line-height:1.4;">
+                    <?php echo esc_html($current_info['description']); ?>
+                </p>
+            </div>
+        <?php endif; ?>
+
+        <div style="margin-top:12px; font-size:11px; color:#64748b; line-height:1.4; border-top:1px dashed #cbd5e1; padding-top:8px;">
+            <em>*Perubahan status ke <strong>Dikonfirmasi</strong> atau <strong>Sewa Berjalan</strong> otomatis menahan kuota ketersediaan unit fisik pada rentang tanggal sewa.</em>
+        </div>
+    </div>
+    <?php
+}
+
+/**
+ * Filter post data on save to preserve custom post status.
+ *
+ * Prevents WordPress default classic editor from resetting custom status to 'draft'.
+ *
+ * @since 1.0.0
+ * @param array $data    An array of slashed, sanitized, and processed post data.
+ * @param array $postarr An array of sanitized (and unsanitized) post data.
+ * @return array Modified post data array.
+ */
+function ryokourent_filter_booking_post_status($data, $postarr) {
+    if (isset($data['post_type']) && $data['post_type'] === 'penyewaan') {
+        if (isset($_POST['ryokourent_booking_status'])) {
+            $new_status = sanitize_key($_POST['ryokourent_booking_status']);
+            $valid_statuses = function_exists('ryokourent_get_booking_statuses')
+                ? array_keys(ryokourent_get_booking_statuses())
+                : array('status_menunggu', 'status_dikonfirmasi', 'status_berjalan', 'status_selesai', 'status_dibatalkan');
+
+            if (in_array($new_status, $valid_statuses, true)) {
+                $data['post_status'] = $new_status;
+            }
+        }
+    }
+
+    return $data;
+}
+add_filter('wp_insert_post_data', 'ryokourent_filter_booking_post_status', 10, 2);
+
+/**
+ * Render Customer Identity Meta Box for CPT 'penyewaan'.
+ *
+ * @since 1.0.0
+ * @param WP_Post $post Current post object.
+ * @return void
+ */
+function ryokourent_render_booking_customer_metabox($post) {
+    $name      = get_post_meta($post->ID, '_ryokou_customer_name', true);
+    $ktp_addr  = get_post_meta($post->ID, '_ryokou_customer_ktp_address', true);
+    $stay_addr = get_post_meta($post->ID, '_ryokou_customer_stay_address', true);
+    $whatsapp  = get_post_meta($post->ID, '_ryokou_customer_whatsapp', true);
+    $emergency = get_post_meta($post->ID, '_ryokou_customer_emergency_phone', true);
+    $social    = get_post_meta($post->ID, '_ryokou_customer_social_media', true);
+
+    $clean_wa = preg_replace('/[^0-9]/', '', (string) $whatsapp);
+    $wa_chat_url = !empty($clean_wa) ? 'https://api.whatsapp.com/send?phone=' . esc_attr($clean_wa) : '';
+    ?>
+    <div class="ryokourent-metabox-wrapper" style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+        <p style="grid-column: span 2; margin:0 0 8px;">
+            <label for="_ryokou_customer_name" style="font-weight:600; display:block; margin-bottom:4px;">
+                <?php esc_html_e('Nama Lengkap (sesuai e-KTP):', 'ryokourent'); ?>
+            </label>
+            <input type="text" name="_ryokou_customer_name" id="_ryokou_customer_name" value="<?php echo esc_attr($name); ?>" class="widefat" placeholder="Contoh: Dimas Aditya Pratama" />
+        </p>
+
+        <p style="margin:0;">
+            <label for="_ryokou_customer_whatsapp" style="font-weight:600; display:block; margin-bottom:4px;">
+                <?php esc_html_e('Nomor WhatsApp Aktif:', 'ryokourent'); ?>
+            </label>
+            <input type="text" name="_ryokou_customer_whatsapp" id="_ryokou_customer_whatsapp" value="<?php echo esc_attr($whatsapp); ?>" class="widefat" placeholder="081234567890" />
+            <?php if (!empty($wa_chat_url)) : ?>
+                <a href="<?php echo esc_url($wa_chat_url); ?>" target="_blank" rel="noopener noreferrer" style="display:inline-block; margin-top:4px; font-size:12px; color:#16a34a; text-decoration:none; font-weight:600;">
+                    &rarr; <?php esc_html_e('Buka Chat WhatsApp Pelanggan', 'ryokourent'); ?>
+                </a>
+            <?php endif; ?>
+        </p>
+
+        <p style="margin:0;">
+            <label for="_ryokou_customer_emergency_phone" style="font-weight:600; display:block; margin-bottom:4px;">
+                <?php esc_html_e('Kontak Darurat (Keluarga):', 'ryokourent'); ?>
+            </label>
+            <input type="text" name="_ryokou_customer_emergency_phone" id="_ryokou_customer_emergency_phone" value="<?php echo esc_attr($emergency); ?>" class="widefat" placeholder="081345678901 (Keluarga tidak ikut trip)" />
+        </p>
+
+        <p style="grid-column: span 2; margin:0;">
+            <label for="_ryokou_customer_social_media" style="font-weight:600; display:block; margin-bottom:4px;">
+                <?php esc_html_e('Akun Media Sosial (Instagram / Facebook):', 'ryokourent'); ?>
+            </label>
+            <input type="text" name="_ryokou_customer_social_media" id="_ryokou_customer_social_media" value="<?php echo esc_attr($social); ?>" class="widefat" placeholder="@username_instagram" />
+        </p>
+
+        <p style="margin:0;">
+            <label for="_ryokou_customer_ktp_address" style="font-weight:600; display:block; margin-bottom:4px;">
+                <?php esc_html_e('Alamat Sesuai KTP:', 'ryokourent'); ?>
+            </label>
+            <textarea name="_ryokou_customer_ktp_address" id="_ryokou_customer_ktp_address" rows="3" class="widefat" placeholder="Alamat KTP kota asal"><?php echo esc_textarea($ktp_addr); ?></textarea>
+        </p>
+
+        <p style="margin:0;">
+            <label for="_ryokou_customer_stay_address" style="font-weight:600; display:block; margin-bottom:4px;">
+                <?php esc_html_e('Tempat Menginap di Malang/Batu:', 'ryokourent'); ?>
+            </label>
+            <textarea name="_ryokou_customer_stay_address" id="_ryokou_customer_stay_address" rows="3" class="widefat" placeholder="Hotel / Homestay / Kost tempat menginap"><?php echo esc_textarea($stay_addr); ?></textarea>
+        </p>
+    </div>
+    <?php
+}
+
+/**
+ * Render Booking Details, Fleet Allocation, and Schedule Meta Box.
+ *
+ * @since 1.0.0
+ * @param WP_Post $post Current post object.
+ * @return void
+ */
+function ryokourent_render_booking_details_metabox($post) {
+    $motor_id      = get_post_meta($post->ID, '_ryokou_rented_motor_id', true);
+    $allocated_plt = get_post_meta($post->ID, '_ryokou_booking_allocated_plate', true);
+    $pickup_loc    = get_post_meta($post->ID, '_ryokou_pickup_location', true);
+    $start_dt      = get_post_meta($post->ID, '_ryokou_start_datetime', true);
+    $end_dt        = get_post_meta($post->ID, '_ryokou_end_datetime', true);
+    $total_days    = get_post_meta($post->ID, '_ryokou_total_days', true);
+    $total_price   = get_post_meta($post->ID, '_ryokou_total_price', true);
+    $rental_notes  = get_post_meta($post->ID, '_ryokou_rental_notes', true);
+
+    // Query published motors for dropdown
+    $motors = get_posts(array(
+        'post_type'      => 'motor',
+        'post_status'    => 'publish',
+        'posts_per_page' => -1,
+        'orderby'        => 'title',
+        'order'          => 'ASC',
+    ));
+    ?>
+    <div class="ryokourent-metabox-wrapper" style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+        <p style="margin:0;">
+            <label for="_ryokou_rented_motor_id" style="font-weight:600; display:block; margin-bottom:4px;">
+                <?php esc_html_e('Model Armada yang Disewa:', 'ryokourent'); ?>
+            </label>
+            <select name="_ryokou_rented_motor_id" id="_ryokou_rented_motor_id" class="widefat">
+                <option value=""><?php esc_html_e('-- Pilih Model Motor --', 'ryokourent'); ?></option>
+                <?php if (!empty($motors)) : ?>
+                    <?php foreach ($motors as $m) : ?>
+                        <option value="<?php echo esc_attr($m->ID); ?>" <?php selected($motor_id, $m->ID); ?>>
+                            <?php echo esc_html($m->post_title); ?>
+                        </option>
+                    <?php endforeach; ?>
+                <?php else : ?>
+                    <option value="0" selected><?php esc_html_e('Armada Blueprint (Contoh)', 'ryokourent'); ?></option>
+                <?php endif; ?>
+            </select>
+        </p>
+
+        <p style="margin:0;">
+            <label for="_ryokou_booking_allocated_plate" style="font-weight:600; display:block; margin-bottom:4px;">
+                <?php esc_html_e('Alokasi Plat Nomor Unit Fisik:', 'ryokourent'); ?>
+            </label>
+            <input type="text" name="_ryokou_booking_allocated_plate" id="_ryokou_booking_allocated_plate" value="<?php echo esc_attr($allocated_plt); ?>" class="widefat" placeholder="Contoh: N 1234 ABC" />
+            <span style="font-size:11px; color:#64748b;"><?php esc_html_e('Diisi oleh operator saat konfirmasi / serah terima unit.', 'ryokourent'); ?></span>
+        </p>
+
+        <p style="margin:0;">
+            <label for="_ryokou_pickup_location" style="font-weight:600; display:block; margin-bottom:4px;">
+                <?php esc_html_e('Lokasi Pengambilan / Penyerahan:', 'ryokourent'); ?>
+            </label>
+            <select name="_ryokou_pickup_location" id="_ryokou_pickup_location" class="widefat">
+                <option value="Pool Dinoyo" <?php selected($pickup_loc, 'Pool Dinoyo'); ?>>Pool Dinoyo (Lowokwaru, Malang)</option>
+                <option value="Pool Batu" <?php selected($pickup_loc, 'Pool Batu'); ?>>Pool Batu (Jl. Diponegoro, Kota Batu)</option>
+                <option value="Stasiun Malang" <?php selected($pickup_loc, 'Stasiun Malang'); ?>>Diantar ke Stasiun Malang Kota Baru (Sesuai Sikon)</option>
+                <option value="Hotel/Homestay" <?php selected($pickup_loc, 'Hotel/Homestay'); ?>>Diantar ke Penginapan / Hotel (Sesuai Sikon)</option>
+            </select>
+        </p>
+
+        <p style="margin:0;">
+            <label for="_ryokou_total_price" style="font-weight:600; display:block; margin-bottom:4px;">
+                <?php esc_html_e('Total Tarif Sewa (Rp):', 'ryokourent'); ?>
+            </label>
+            <input type="number" name="_ryokou_total_price" id="_ryokou_total_price" value="<?php echo esc_attr($total_price); ?>" class="widefat" step="1000" min="0" placeholder="Contoh: 170000" />
+        </p>
+
+        <p style="margin:0;">
+            <label for="_ryokou_start_datetime" style="font-weight:600; display:block; margin-bottom:4px;">
+                <?php esc_html_e('Jadwal Mulai Sewa (WIB):', 'ryokourent'); ?>
+            </label>
+            <input type="text" name="_ryokou_start_datetime" id="_ryokou_start_datetime" value="<?php echo esc_attr($start_dt); ?>" class="widefat" placeholder="YYYY-MM-DD HH:MM (07:00 - 23:00 WIB)" />
+        </p>
+
+        <p style="margin:0;">
+            <label for="_ryokou_end_datetime" style="font-weight:600; display:block; margin-bottom:4px;">
+                <?php esc_html_e('Jadwal Selesai Sewa (WIB):', 'ryokourent'); ?>
+            </label>
+            <input type="text" name="_ryokou_end_datetime" id="_ryokou_end_datetime" value="<?php echo esc_attr($end_dt); ?>" class="widefat" placeholder="YYYY-MM-DD HH:MM (07:00 - 23:00 WIB)" />
+        </p>
+
+        <p style="grid-column: span 2; margin:0;">
+            <label for="_ryokou_rental_notes" style="font-weight:600; display:block; margin-bottom:4px;">
+                <?php esc_html_e('Catatan Tambahan (Ukuran Helm, Jas Hujan, Rute):', 'ryokourent'); ?>
+            </label>
+            <textarea name="_ryokou_rental_notes" id="_ryokou_rental_notes" rows="2" class="widefat" placeholder="Butuh 2 helm ukuran L dan jas hujan setelan."><?php echo esc_textarea($rental_notes); ?></textarea>
+        </p>
+    </div>
+    <?php
+}
+
+/**
+ * Save meta data for CPT 'penyewaan'.
+ *
+ * @since 1.0.0
+ * @param int $post_id Post ID.
+ * @return void
+ */
+function ryokourent_save_booking_meta_data($post_id) {
+    // 1. Guard against autosave
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+        return;
+    }
+
+    // 2. Nonce verification
+    if (!isset($_POST['ryokourent_booking_meta_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['ryokourent_booking_meta_nonce'])), 'ryokourent_save_booking_meta_action')) {
+        return;
+    }
+
+    // 3. Post type and capability check
+    if (!isset($_POST['post_type']) || 'penyewaan' !== $_POST['post_type']) {
+        return;
+    }
+
+    if (!current_user_can('edit_post', $post_id)) {
+        return;
+    }
+
+    // 4. Save Customer fields
+    if (isset($_POST['_ryokou_customer_name'])) {
+        update_post_meta($post_id, '_ryokou_customer_name', sanitize_text_field(wp_unslash($_POST['_ryokou_customer_name'])));
+    }
+    if (isset($_POST['_ryokou_customer_ktp_address'])) {
+        update_post_meta($post_id, '_ryokou_customer_ktp_address', sanitize_textarea_field(wp_unslash($_POST['_ryokou_customer_ktp_address'])));
+    }
+    if (isset($_POST['_ryokou_customer_stay_address'])) {
+        update_post_meta($post_id, '_ryokou_customer_stay_address', sanitize_textarea_field(wp_unslash($_POST['_ryokou_customer_stay_address'])));
+    }
+    if (isset($_POST['_ryokou_customer_whatsapp'])) {
+        $raw_wa = sanitize_text_field(wp_unslash($_POST['_ryokou_customer_whatsapp']));
+        $clean_wa = function_exists('ryokourent_sanitize_phone') ? ryokourent_sanitize_phone($raw_wa) : preg_replace('/[^0-9]/', '', $raw_wa);
+        update_post_meta($post_id, '_ryokou_customer_whatsapp', $clean_wa);
+    }
+    if (isset($_POST['_ryokou_customer_emergency_phone'])) {
+        $raw_emg = sanitize_text_field(wp_unslash($_POST['_ryokou_customer_emergency_phone']));
+        $clean_emg = function_exists('ryokourent_sanitize_phone') ? ryokourent_sanitize_phone($raw_emg) : preg_replace('/[^0-9]/', '', $raw_emg);
+        update_post_meta($post_id, '_ryokou_customer_emergency_phone', $clean_emg);
+    }
+    if (isset($_POST['_ryokou_customer_social_media'])) {
+        update_post_meta($post_id, '_ryokou_customer_social_media', sanitize_text_field(wp_unslash($_POST['_ryokou_customer_social_media'])));
+    }
+
+    // 5. Save Booking details
+    if (isset($_POST['_ryokou_rented_motor_id'])) {
+        update_post_meta($post_id, '_ryokou_rented_motor_id', absint(wp_unslash($_POST['_ryokou_rented_motor_id'])));
+    }
+    if (isset($_POST['_ryokou_booking_allocated_plate'])) {
+        $raw_plate = sanitize_text_field(wp_unslash($_POST['_ryokou_booking_allocated_plate']));
+        $clean_plate = strtoupper(trim(preg_replace('/[^a-zA-Z0-9\s]/', '', $raw_plate)));
+        update_post_meta($post_id, '_ryokou_booking_allocated_plate', $clean_plate);
+    }
+    if (isset($_POST['_ryokou_pickup_location'])) {
+        update_post_meta($post_id, '_ryokou_pickup_location', sanitize_text_field(wp_unslash($_POST['_ryokou_pickup_location'])));
+    }
+    if (isset($_POST['_ryokou_start_datetime'])) {
+        update_post_meta($post_id, '_ryokou_start_datetime', sanitize_text_field(wp_unslash($_POST['_ryokou_start_datetime'])));
+    }
+    if (isset($_POST['_ryokou_end_datetime'])) {
+        update_post_meta($post_id, '_ryokou_end_datetime', sanitize_text_field(wp_unslash($_POST['_ryokou_end_datetime'])));
+    }
+    if (isset($_POST['_ryokou_total_price'])) {
+        update_post_meta($post_id, '_ryokou_total_price', absint(wp_unslash($_POST['_ryokou_total_price'])));
+    }
+    if (isset($_POST['_ryokou_rental_notes'])) {
+        update_post_meta($post_id, '_ryokou_rental_notes', sanitize_textarea_field(wp_unslash($_POST['_ryokou_rental_notes'])));
+    }
+}
+add_action('save_post_penyewaan', 'ryokourent_save_booking_meta_data');
+

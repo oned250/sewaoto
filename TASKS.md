@@ -124,39 +124,47 @@ Dokumen ini berisi rincian urutan 30 task proyek Ryokourent sesuai dengan arsite
 
 ---
 
-### TASK-009: Buat Custom Post Type `penyewaan`
+### TASK-009: Buat Custom Post Type `penyewaan` [DONE]
+* **Status:** Selesai (DONE) - 2026-09-30
 * **Tujuan:** Mendaftarkan CPT `penyewaan` (internal admin) untuk menampung riwayat pesanan booking dari website dengan kapabilitas terproteksi.
 * **File yang Dibuat/Diubah:**
   * `wp-content/plugins/ryokourent-core/includes/post-types.php`
   * `wp-content/plugins/ryokourent-core/includes/meta-boxes.php`
+  * `wp-content/plugins/ryokourent-core/tests/test-cpt-penyewaan.php`
 * **Dependensi:** TASK-004.
-* **Kriteria Selesai:** Menu "Penyewaan Motor" muncul di sidebar dengan ikon kalender, `public => false`, `show_in_rest => false`. Hak akses dipetakan ke custom capability `manage_ryokourent_bookings` sehingga Author, Editor, dan Contributor biasa tidak dapat mengintip PII penyewa (KTP, nomor telepon, alamat).
-* **Cara Pengujian:** Masuk ke menu Penyewaan sebagai Administrator dan Operator; uji akses langsung URL sebagai Author (harus 403 Forbidden).
-* **Risiko:** Data pelanggan terekspos ke feed RSS atau REST API publik jika parameter `public` salah diset.
+* **Kriteria Selesai:** Menu "Penyewaan Motor" muncul di sidebar dengan ikon kalender, `public => false`, `publicly_queryable => false`, `exclude_from_search => true`, `show_in_rest => false` (mencegah kebocoran PII via REST API publik). Hak akses dipetakan ke custom capability `manage_ryokourent_bookings` sehingga Author, Editor, dan Contributor biasa tidak dapat mengintip PII penyewa (KTP, nomor telepon, alamat).
+* **Cara Pengujian:** Jalankan unit test `test-cpt-penyewaan.php` untuk memverifikasi pendaftaran CPT, parameter privasi PII, dan kapabilitas RBAC.
+* **Risiko:** Data pelanggan terekspos ke feed RSS atau REST API publik jika parameter `public` salah diset (teratasi dengan `public => false` dan `show_in_rest => false`).
 
 ---
 
-### TASK-010: Buat Status Booking Kustom
+### TASK-010: Buat Status Booking Kustom [DONE]
+* **Status:** Selesai (DONE) - 2026-09-30
 * **Tujuan:** Mendaftarkan post status kustom: `status_menunggu`, `status_dikonfirmasi`, `status_berjalan`, `status_selesai`, `status_dibatalkan` dengan parameter aman (`public => false`).
 * **File yang Dibuat/Diubah:**
   * `wp-content/plugins/ryokourent-core/includes/post-types.php`
   * `wp-content/plugins/ryokourent-core/includes/meta-boxes.php`
+  * `wp-content/plugins/ryokourent-core/tests/test-cpt-penyewaan.php`
 * **Dependensi:** TASK-009.
 * **Kriteria Selesai:** Dropdown status pada metabox CPT `penyewaan` memuat seluruh status kustom dengan label warna yang jelas. Pengubahan status ditangani via filter `wp_insert_post_data` agar status kustom tidak ter-reset ke status default saat diedit dari WP-Admin. Seluruh slug status $\le 20$ karakter.
-* **Cara Pengujian:** Simpan satu data booking dengan masing-masing status, klik Update, muat ulang halaman, pastikan status bertahan dan filter status di tabel admin berfungsi.
-* **Risiko:** Status kustom tidak muncul pada filter tabel default WordPress jika parameter `show_in_admin_all_list` tidak diset.
+* **Cara Pengujian:** Jalankan unit test `test-cpt-penyewaan.php`, verifikasi kelima status kustom terdaftar, slug length, dan filter `wp_insert_post_data` mempertahankan status pilihan.
+* **Risiko:** Status kustom tidak muncul pada filter tabel default WordPress jika parameter `show_in_admin_all_list` tidak diset (teratasi dengan `show_in_admin_all_list => true`).
 
 ---
 
-### TASK-011: Buat Form Booking Dasar
+### TASK-011: Buat Form Booking Dasar [DONE]
+* **Status:** Selesai (DONE) - 2026-09-30
 * **Tujuan:** Membangun formulir booking HTML5 yang bersih dan terstruktur mencakup seluruh field identitas, pilihan rute (Malang/Batu vs Trip Bromo dengan kuncian unit CRF 150L), proteksi honeypot (`ryokourent_hp`), dan tombol submit WhatsApp.
 * **File yang Dibuat/Diubah:**
   * `wp-content/plugins/ryokourent-core/public/forms.php`
   * `wp-content/plugins/ryokourent-core/public/shortcodes.php`
+  * `wp-content/plugins/ryokourent-core/assets/css/ryokourent-public.css`
+  * `wp-content/plugins/ryokourent-core/assets/js/ryokourent-filter.js`
+  * `wp-content/plugins/ryokourent-core/tests/test-booking-form.php`
 * **Dependensi:** TASK-005.
-* **Kriteria Selesai:** Shortcode `[ryokou_booking_form]` merender formulir booking lengkap dan responsif di smartphone. Field honeypot tersembunyi dari pengguna biasa. Pilihan rute Bromo otomatis mengunci dropdown motor hanya pada CRF 150L.
-* **Cara Pengujian:** Buka halaman booking di mobile viewport, uji pilih rute Bromo dan periksa perubahan pilihan motor.
-* **Risiko:** Input form terlalu panjang untuk pengguna smartphone jika tidak ditata rapi.
+* **Kriteria Selesai:** Shortcode `[ryokou_booking_form]` merender formulir booking lengkap dan responsif di smartphone. Field honeypot tersembunyi dari pengguna biasa. Pilihan rute Bromo otomatis mengunci dropdown motor hanya pada CRF 150L. Terdapat kartu kalkulasi estimasi durasi dan tarif sewa secara real-time.
+* **Cara Pengujian:** Jalankan unit test `test-booking-form.php`, uji toggle rute Bromo dan verifikasi penguncian model motor serta field identitas pelanggan.
+* **Risiko:** Input form terlalu panjang untuk pengguna smartphone jika tidak ditata rapi (teratasi dengan pengelompokan 3 langkah terstruktur).
 
 ---
 

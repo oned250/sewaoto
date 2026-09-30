@@ -17,6 +17,21 @@ Format penulisan berpedoman pada [Keep a Changelog](https://keepachangelog.com/i
   - Penyusunan `DECISIONS.md` mendokumentasikan 7 Architectural Decision Records (ADR-001 s/d ADR-007).
   - Penyusunan `TESTING.md` memetakan 20 skenario uji (TC-001 s/d TC-020).
   - Penyusunan `.env.example` dan `CONFIG.example.php`.
+- **Fase 3 (TASK-011: Form Booking Dasar & Interaksi WhatsApp):**
+  - Pembuatan file `wp-content/plugins/ryokourent-core/public/forms.php` untuk merender formulir booking HTML5 responsif 3-langkah (pilihan rute & armada, jadwal sewa & kalkulasi durasi, identitas pelanggan sesuai e-KTP), dilengkapi honeypot anti-spam `ryokourent_hp` dan verifikasi nonce `ryokourent_booking_nonce`.
+  - Pendaftaran shortcode `[ryokou_booking_form]` pada `wp-content/plugins/ryokourent-core/public/shortcodes.php`.
+  - Penambahan interaksi dinamis pada `wp-content/plugins/ryokourent-core/assets/js/ryokourent-filter.js`: kuncian rute Bromo otomatis menonaktifkan skutik dan mengunci pilihan motor ke Trail CRF 150L, kalkulasi durasi live dengan toleransi overtime 2 jam, dan penataan draf pesan WhatsApp siap kirim.
+  - Penambahan styling CSS lengkap form booking pada `wp-content/plugins/ryokourent-core/assets/css/ryokourent-public.css`.
+  - Pembuatan automated unit test `wp-content/plugins/ryokourent-core/tests/test-booking-form.php`.
+- **Fase 3 (TASK-010: Status Booking Kustom):**
+  - Pendaftaran 5 post status kustom internal (`status_menunggu`, `status_dikonfirmasi`, `status_berjalan`, `status_selesai`, `status_dibatalkan`) pada `wp-content/plugins/ryokourent-core/includes/post-types.php` dengan `public => false` dan slug $\le 20$ karakter.
+  - Penyediaan metabox dropdown status pemesanan dengan penanda visual warna pada `wp-content/plugins/ryokourent-core/includes/meta-boxes.php`.
+  - Penerapan filter `wp_insert_post_data` untuk mencegah WordPress me-reset status kustom kembali ke draft saat diedit dari WP-Admin.
+- **Fase 3 (TASK-009: Custom Post Type Penyewaan & RBAC):**
+  - Pendaftaran CPT `penyewaan` internal pada `wp-content/plugins/ryokourent-core/includes/post-types.php` dengan parameter keamanan PII ketat (`public => false`, `publicly_queryable => false`, `exclude_from_search => true`, `show_in_rest => false`).
+  - Pemetaan seluruh kapabilitas CPT ke custom RBAC `manage_ryokourent_bookings`.
+  - Pembuatan panel metabox data identitas pelanggan (nama, nomor WA dengan link direct chat, kontak darurat, alamat KTP, alamat menginap) dan panel rincian armada, jadwal sewa, total tarif, dan alokasi plat nomor unit fisik pada `wp-content/plugins/ryokourent-core/includes/meta-boxes.php`.
+  - Pembuatan automated unit test `wp-content/plugins/ryokourent-core/tests/test-cpt-penyewaan.php`.
 - **Fase 2 (TASK-008: Halaman Detail Motor GeneratePress Child Theme):**
   - Pembuatan template single post `wp-content/themes/generatepress-child/templates/single-motor.php` dan `single-motor.php` untuk merender informasi lengkap armada: header & breadcrumb navigasi kembali ke katalog, galeri foto, spesifikasi teknis (mesin cc, transmisi, karakter rute, bensin), callout edukasi khusus rute Bromo (peringatan larangan matik vs trail CRF 150L resmi Bromo), fasilitas sewa gratis (2 helm SNI steril, 2 jas hujan setelan, phone holder), dan sticky sidebar tarif resmi (harian toleransi overtime 2 jam, paket mingguan, paket bulanan, syarat sewa cepat, dan WhatsApp CTA).
   - Pembaruan `wp-content/themes/generatepress-child/functions.php` dengan filter `single_template` dan dynamic stylesheet enqueue.

@@ -17,9 +17,9 @@ Dokumen ini melacak status pengerjaan sesi, task aktif, dependensi yang telah te
   - `feature/availability` (Fitur pencegahan double booking & pengecekan stok unit)
   - `feature/whatsapp` (Fitur generator draft pesan & URL WhatsApp)
   - `feature/admin-dashboard` (Fitur dashboard admin & pelaporan operasional)
-* **Task Terakhir Selesai:** `TASK-008: Buat Halaman Detail Motor`
+* **Task Terakhir Selesai:** `TASK-011: Buat Form Booking Dasar`
 * **Status Task Terakhir:** **DONE (SELESAI)**
-* **Task Selanjutnya:** `TASK-009: Buat Custom Post Type penyewaan` (Menunggu perintah persetujuan pengguna)
+* **Task Selanjutnya:** `TASK-012: Buat Validasi Data Pelanggan & Anti-Spam` (Menunggu perintah selanjutnya dari pengguna)
 
 ---
 
@@ -35,7 +35,52 @@ Dokumen ini melacak status pengerjaan sesi, task aktif, dependensi yang telah te
 | **TASK-006** | Taxonomy Kategori Motor | FASE 2 | **DONE** | TASK-004 | 2026-09-30 |
 | **TASK-007** | Tampilan Katalog Motor | FASE 2 | **DONE** | TASK-005, TASK-006 | 2026-09-30 |
 | **TASK-008** | Halaman Detail Motor | FASE 2 | **DONE** | TASK-007 | 2026-09-30 |
-| **TASK-009** | Custom Post Type `penyewaan` | FASE 3 | **PENDING** | TASK-004 | - |
+| **TASK-009** | Custom Post Type `penyewaan` | FASE 3 | **DONE** | TASK-004 | 2026-09-30 |
+| **TASK-010** | Status Booking Kustom | FASE 3 | **DONE** | TASK-009 | 2026-09-30 |
+| **TASK-011** | Form Booking Dasar | FASE 3 | **DONE** | TASK-005 | 2026-09-30 |
+| **TASK-012** | Validasi Pelanggan & Anti-Spam | FASE 3 | **PENDING** | TASK-011 | - |
+
+---
+
+## 3. Komponen yang Telah Diimplementasikan pada TASK-011
+1. **Formulir Pemesanan HTML5 (`wp-content/plugins/ryokourent-core/public/forms.php`):**
+   - 3 Langkah pemesanan terstruktur:
+     - Langkah 1: Pilihan Rute Perjalanan (Malang Kota & Wisata Batu vs Trip Kaldera Bromo) & Dropdown Model Motor dinamis.
+     - Langkah 2: Jadwal Sewa (Tanggal & Jam Mulai/Selesai 07.00 - 23.00 WIB) & Live Summary Card durasi serta estimasi tarif total.
+     - Langkah 3: Data Identitas Pelanggan sesuai e-KTP (Nama, WhatsApp, Kontak Darurat Keluarga, Alamat KTP, Tempat Menginap di Malang/Batu, Media Sosial, Catatan Tambahan).
+   - Perlindungan Keamanan & Anti-Spam: Field honeypot `ryokourent_hp` tersembunyi dan verifikasi nonce `ryokourent_booking_nonce`.
+   - Tombol Submit CTA: Langsung terhubung ke WhatsApp Admin resmi dengan draf pesan terstruktur sesuai blueprint §8.
+2. **Shortcode `[ryokou_booking_form]` (`wp-content/plugins/ryokourent-core/public/shortcodes.php`):**
+   - Pendaftaran shortcode mandiri dengan parameter `form_id`, `selected_motor`, dan `title`.
+3. **Logika Interaktif Kuncian Bromo (`assets/js/ryokourent-filter.js`):**
+   - Saat opsi rute Bromo dipilih, pilihan model motor otomatis terkunci hanya ke Trail CRF 150L (`data-is-bromo="yes"`) dan menonaktifkan unit matik.
+   - Perhitungan durasi real-time dengan toleransi overtime 2 jam.
+
+---
+
+## 4. Komponen yang Telah Diimplementasikan pada TASK-010
+1. **Pendaftaran 5 Status Booking Kustom (`includes/post-types.php`):**
+   - `status_menunggu` (Menunggu Konfirmasi - belum menahan kuota)
+   - `status_dikonfirmasi` (Dikonfirmasi - menahan kuota ketersediaan)
+   - `status_berjalan` (Sewa Berjalan - menahan kuota ketersediaan)
+   - `status_selesai` (Selesai Sewa - kuota dilepas kembali)
+   - `status_dibatalkan` (Dibatalkan - kuota dilepas)
+   - Parameter keamanan: `public => false`, `exclude_from_search => true`, slug $\le 20$ karakter.
+2. **Metabox Status Dropdown & Filter Anti-Reset (`includes/meta-boxes.php`):**
+   - Dropdown status pemesanan dengan indikator warna visual dan keterangan efek kuota.
+   - Filter `wp_insert_post_data` memastikan status kustom tidak ter-reset ke status default saat diedit dari antarmuka klasik WP-Admin.
+
+---
+
+## 5. Komponen yang Telah Diimplementasikan pada TASK-009
+1. **Custom Post Type `penyewaan` (`includes/post-types.php`):**
+   - Registrasi CPT internal untuk transaksi pemesanan dengan menu sidebar `dashicons-calendar-alt`.
+   - Keamanan PII ketat (UU PDP): `public => false`, `publicly_queryable => false`, `show_in_rest => false` (mencegah akses atau kebocoran data pelanggan melalui REST API publik atau feed RSS).
+   - Pemetaan hak akses RBAC: seluruh kapabilitas dipetakan ke `manage_ryokourent_bookings`.
+2. **Metabox Data Pelanggan & Alokasi Plat (`includes/meta-boxes.php`):**
+   - Panel Data Identitas Pelanggan (Nama, WhatsApp dengan tombol direct chat, kontak darurat, alamat KTP, tempat menginap).
+   - Panel Rincian Armada, Jadwal Sewa, Total Tarif, dan Alokasi Plat Nomor Unit Fisik.
+
 
 ---
 

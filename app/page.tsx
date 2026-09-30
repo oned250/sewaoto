@@ -158,10 +158,107 @@ export default function HomePage() {
   const [activeModalMotor, setActiveModalMotor] = useState<MotorUnit | null>(null);
   const [showCodeInspector, setShowCodeInspector] = useState(false);
 
+  // Booking Form State (TASK-011)
+  const [tripDestination, setTripDestination] = useState<'malang_batu' | 'bromo'>('malang_batu');
+  const [selectedMotorId, setSelectedMotorId] = useState<string>('beat-deluxe');
+  const [pickupLocation, setPickupLocation] = useState<string>('Pool Dinoyo');
+  const [startDateTime, setStartDateTime] = useState<string>('2026-10-02T08:30');
+  const [endDateTime, setEndDateTime] = useState<string>('2026-10-04T17:00');
+  const [customerName, setCustomerName] = useState<string>('');
+  const [customerWa, setCustomerWa] = useState<string>('');
+  const [customerEmergency, setCustomerEmergency] = useState<string>('');
+  const [customerKtpAddress, setCustomerKtpAddress] = useState<string>('');
+  const [customerStayAddress, setCustomerStayAddress] = useState<string>('');
+  const [rentalNotes, setRentalNotes] = useState<string>('Butuh 2 helm ukuran L dan jas hujan setelan.');
+  const [bookingSuccessNotice, setBookingSuccessNotice] = useState<boolean>(false);
+
   const filteredFleet = FLEET_DATA.filter((motor) => {
     if (selectedCategory === 'all') return true;
     return motor.category === selectedCategory;
   });
+
+  // Handle route change: Bromo locks selection to Trail CRF 150L
+  const handleDestinationChange = (dest: 'malang_batu' | 'bromo') => {
+    setTripDestination(dest);
+    if (dest === 'bromo') {
+      setSelectedMotorId('crf-150l');
+    }
+  };
+
+  // Find currently selected motor in form
+  const currentMotor = FLEET_DATA.find((m) => m.id === selectedMotorId) || FLEET_DATA[0];
+
+  // Duration & Pricing Calculation
+  const calculateDurationAndPrice = () => {
+    const start = new Date(startDateTime);
+    const end = new Date(endDateTime);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) {
+      return { days: 0, hours: 0, totalPrice: 0, isValid: false };
+    }
+
+    const diffMs = end.getTime() - start.getTime();
+    const hours = Math.round((diffMs / (1000 * 60 * 60)) * 10) / 10;
+
+    let days = 1;
+    if (hours <= 26) {
+      days = 1;
+    } else {
+      const extraHours = hours - 24;
+      days = 1 + Math.ceil(Math.max(0, extraHours - 2) / 24);
+    }
+
+    const dailyRate = currentMotor.priceDaily;
+    const totalPrice = days * dailyRate;
+
+    return { days, hours, totalPrice, isValid: true };
+  };
+
+  const { days, hours, totalPrice, isValid } = calculateDurationAndPrice();
+
+  // Construct structured WhatsApp booking text according to Blueprint §8
+  const buildWhatsAppBookingUrl = () => {
+    const text = `Halo Admin Ryokourent, saya ingin melakukan pemesanan sewa motor dengan rincian berikut:
+
+📋 DATA PENYEWA
+• Nama Lengkap   : ${customerName || 'Belum diisi'}
+• Alamat KTP     : ${customerKtpAddress || 'Sesuai KTP'}
+• Tempat Menginap: ${customerStayAddress || 'Malang/Batu'}
+• No. WhatsApp   : ${customerWa || '08...'}
+• No. Darurat    : ${customerEmergency || '08...'} (Keluarga)
+
+🛵 UNIT & LOKASI
+• Unit Motor     : ${currentMotor.name}
+• Rute Tujuan    : ${tripDestination === 'bromo' ? 'Trip Kaldera Bromo (Trail CRF 150L)' : 'Malang Kota & Wisata Batu'}
+• Lokasi Ambil   : ${pickupLocation}
+
+⏱️ JADWAL SEWA
+• Mulai Sewa     : ${startDateTime.replace('T', ' ')} WIB
+• Selesai Sewa   : ${endDateTime.replace('T', ' ')} WIB
+• Estimasi Durasi: ${days} Hari (~${Math.round(hours)} Jam)
+• Estimasi Biaya : Rp ${totalPrice.toLocaleString('id-ID')}
+
+📝 CATATAN TAMBAHAN:
+${rentalNotes || '2 Helm SNI + Jas Hujan'}
+
+Mohon konfirmasi ketersediaan slot armada dan instruksi pembayaran jaminan. Terima kasih!`;
+
+    return `https://api.whatsapp.com/send?phone=62895384017772&text=${encodeURIComponent(text)}`;
+  };
+
+  const handleSelectMotorFromCard = (motor: MotorUnit) => {
+    setSelectedMotorId(motor.id);
+    if (motor.isBromoReady) {
+      setTripDestination('bromo');
+    } else {
+      setTripDestination('malang_batu');
+    }
+    const formEl = document.getElementById('booking-form');
+    if (formEl) {
+      formEl.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
 
   const getWaLink = (motorName?: string) => {
     const text = motorName
@@ -568,6 +665,288 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Booking Form Section (TASK-011 / shortcode [ryokou_booking_form]) */}
+      <section id="booking-form" className="py-16 sm:py-24">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-10">
+            <span className="text-xs font-bold text-amber-400 tracking-widest uppercase bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full mb-3 inline-block">
+              ZERO-FRICTION WHATSAPP BOOKING
+            </span>
+            <h2 className="text-2xl sm:text-4xl font-extrabold text-white mb-3">
+              Formulir Pemesanan Sewa Motor
+            </h2>
+            <p className="text-slate-400 text-xs sm:text-sm">
+              Lengkapi data sewa dan jadwal. Sistem menghitung durasi secara otomatis dan menyusun draf pesan WhatsApp siap kirim ke Admin resmi.
+            </p>
+          </div>
+
+          <div className="bg-[#162032] border border-[#223249] rounded-2xl p-6 sm:p-8 shadow-xl">
+            {/* Step 1: Route & Motor Selection */}
+            <div className="pb-6 mb-6 border-b border-[#223249]">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-bold text-xs flex items-center justify-center">
+                  1
+                </span>
+                <h3 className="font-bold text-white text-base">Rute Perjalanan & Pilihan Armada</h3>
+              </div>
+
+              {/* Destination Radio */}
+              <div className="mb-4">
+                <label className="text-xs font-semibold text-slate-300 block mb-2">
+                  Tujuan Rute Perjalanan <span className="text-rose-500">*</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleDestinationChange('malang_batu')}
+                    className={`text-left p-3.5 rounded-xl border transition-all flex items-start gap-3 ${
+                      tripDestination === 'malang_batu'
+                        ? 'bg-amber-500/10 border-amber-500 shadow-md shadow-amber-500/10'
+                        : 'bg-[#0b1120] border-[#223249] hover:border-slate-600'
+                    }`}
+                  >
+                    <span className="text-2xl">🏙️</span>
+                    <div>
+                      <strong className="text-xs sm:text-sm text-white block mb-0.5">
+                        Malang Kota & Wisata Batu
+                      </strong>
+                      <span className="text-[11px] text-slate-400 leading-tight block">
+                        Rute dalam kota, kampus, kuliner, dan tanjakan wisata Batu.
+                      </span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDestinationChange('bromo')}
+                    className={`text-left p-3.5 rounded-xl border transition-all flex items-start gap-3 ${
+                      tripDestination === 'bromo'
+                        ? 'bg-amber-500/10 border-amber-500 shadow-md shadow-amber-500/10'
+                        : 'bg-[#0b1120] border-[#223249] hover:border-slate-600'
+                    }`}
+                  >
+                    <span className="text-2xl">🌋</span>
+                    <div>
+                      <strong className="text-xs sm:text-sm text-white block mb-0.5">
+                        Trip Kaldera Bromo (Wajib CRF)
+                      </strong>
+                      <span className="text-[11px] text-amber-400/90 leading-tight block font-medium">
+                        Unit otomatis dikunci ke Trail CRF 150L.
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                    Model Armada Motor <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={selectedMotorId}
+                    onChange={(e) => setSelectedMotorId(e.target.value)}
+                    className="w-full bg-[#0b1120] border border-[#223249] text-white text-xs sm:text-sm rounded-lg p-2.5 focus:outline-none focus:border-amber-500"
+                  >
+                    {FLEET_DATA.map((m) => (
+                      <option
+                        key={m.id}
+                        value={m.id}
+                        disabled={tripDestination === 'bromo' && !m.isBromoReady}
+                      >
+                        {m.name} (Rp {m.priceDaily.toLocaleString('id-ID')}/hari)
+                        {m.isBromoReady ? ' - [Wajib Bromo]' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                    Lokasi Penyerahan Unit <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={pickupLocation}
+                    onChange={(e) => setPickupLocation(e.target.value)}
+                    className="w-full bg-[#0b1120] border border-[#223249] text-white text-xs sm:text-sm rounded-lg p-2.5 focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="Pool Dinoyo">Pool Dinoyo (Lowokwaru, Kota Malang)</option>
+                    <option value="Pool Batu">Pool Batu (Jl. Diponegoro, Kota Batu)</option>
+                    <option value="Stasiun Malang">Diantar ke Stasiun Malang Kota Baru (Sikon)</option>
+                    <option value="Hotel/Homestay">Diantar ke Hotel / Penginapan (Sikon)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 2: Schedule & Duration */}
+            <div className="pb-6 mb-6 border-b border-[#223249]">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-bold text-xs flex items-center justify-center">
+                  2
+                </span>
+                <h3 className="font-bold text-white text-base">Jadwal Sewa & Kalkulasi Tarif</h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                    Mulai Sewa (07.00 - 23.00 WIB) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={startDateTime}
+                    onChange={(e) => setStartDateTime(e.target.value)}
+                    className="w-full bg-[#0b1120] border border-[#223249] text-white text-xs sm:text-sm rounded-lg p-2.5 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                    Selesai Sewa (07.00 - 23.00 WIB) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={endDateTime}
+                    onChange={(e) => setEndDateTime(e.target.value)}
+                    className="w-full bg-[#0b1120] border border-[#223249] text-white text-xs sm:text-sm rounded-lg p-2.5 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              {/* Live Preview Box */}
+              <div className="bg-[#0b1120] border-l-4 border-l-amber-500 border border-[#223249] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div>
+                  <span className="text-slate-400 block text-[11px]">Estimasi Durasi Sewa:</span>
+                  <strong className="text-white text-sm">
+                    {isValid ? `${days} Hari (~${Math.round(hours)} Jam)` : 'Jadwal belum valid'}
+                  </strong>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">
+                    *Toleransi keterlambatan (overtime) s/d 2 jam
+                  </span>
+                </div>
+                <div className="sm:text-right">
+                  <span className="text-slate-400 block text-[11px]">Estimasi Total Tarif:</span>
+                  <strong className="text-amber-400 text-lg sm:text-xl font-black">
+                    Rp {totalPrice.toLocaleString('id-ID')}
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 3: Identity Fields */}
+            <div className="pb-6 mb-6 border-b border-[#223249]">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-bold text-xs flex items-center justify-center">
+                  3
+                </span>
+                <h3 className="font-bold text-white text-base">Data Identitas Pelanggan (Sesuai e-KTP)</h3>
+              </div>
+
+              <div className="space-y-4 text-xs sm:text-sm">
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1">
+                    Nama Lengkap Sesuai e-KTP <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Contoh: Dimas Aditya Pratama"
+                    className="w-full bg-[#0b1120] border border-[#223249] text-white text-xs sm:text-sm rounded-lg p-2.5 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">
+                      No. WhatsApp Aktif <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      value={customerWa}
+                      onChange={(e) => setCustomerWa(e.target.value)}
+                      placeholder="081234567890"
+                      className="w-full bg-[#0b1120] border border-[#223249] text-white text-xs sm:text-sm rounded-lg p-2.5 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">
+                      Kontak Darurat Keluarga <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      value={customerEmergency}
+                      onChange={(e) => setCustomerEmergency(e.target.value)}
+                      placeholder="081345678901 (Keluarga tidak ikut trip)"
+                      className="w-full bg-[#0b1120] border border-[#223249] text-white text-xs sm:text-sm rounded-lg p-2.5 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">
+                      Alamat Sesuai KTP <span className="text-rose-500">*</span>
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={customerKtpAddress}
+                      onChange={(e) => setCustomerKtpAddress(e.target.value)}
+                      placeholder="Alamat asal sesuai KTP"
+                      className="w-full bg-[#0b1120] border border-[#223249] text-white text-xs sm:text-sm rounded-lg p-2.5 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">
+                      Tempat Menginap di Malang/Batu <span className="text-rose-500">*</span>
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={customerStayAddress}
+                      onChange={(e) => setCustomerStayAddress(e.target.value)}
+                      placeholder="Hotel / Homestay / Kost"
+                      className="w-full bg-[#0b1120] border border-[#223249] text-white text-xs sm:text-sm rounded-lg p-2.5 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1">
+                    Catatan Tambahan (Fasilitas Helm / Jas Hujan):
+                  </label>
+                  <input
+                    type="text"
+                    value={rentalNotes}
+                    onChange={(e) => setRentalNotes(e.target.value)}
+                    placeholder="Ukuran helm L, jas hujan setelan, dll."
+                    className="w-full bg-[#0b1120] border border-[#223249] text-white text-xs sm:text-sm rounded-lg p-2.5 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Submit to WhatsApp */}
+            <div className="space-y-3">
+              <a
+                href={buildWhatsAppBookingUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full inline-flex items-center justify-center gap-2 bg-[#25d366] hover:bg-[#128c7e] text-white font-bold text-sm sm:text-base py-3.5 px-6 rounded-xl transition-all shadow-lg shadow-emerald-950/40"
+              >
+                <Phone className="w-5 h-5" />
+                <span>Kirim Pesanan ke WhatsApp Admin Ryokourent</span>
+              </a>
+              <p className="text-[11px] text-slate-400 text-center leading-relaxed">
+                🔒 Data identitas Anda aman dilindungi sesuai UU Perlindungan Data Pribadi (UU PDP). Form dilengkapi honeypot anti-spam dan nonce token WordPress.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Detail Modal Component (Emulating single-motor.php) */}
       <AnimatePresence>
         {activeModalMotor && (
@@ -753,6 +1132,18 @@ export default function HomePage() {
                       <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                       <span><strong>TASK-008:</strong> Single post template (<code>single-motor.php</code>) GeneratePress Child Theme.</span>
                     </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span><strong>TASK-009:</strong> CPT <code>penyewaan</code> terproteksi RBAC <code>manage_ryokourent_bookings</code> (UU PDP).</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span><strong>TASK-010:</strong> 5 Status booking kustom & filter <code>wp_insert_post_data</code> anti-reset.</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span><strong>TASK-011:</strong> Form booking HTML5, kuncian rute Bromo ke CRF, honeypot & shortcode <code>[ryokou_booking_form]</code>.</span>
+                    </li>
                   </ul>
                 </div>
 
@@ -760,14 +1151,15 @@ export default function HomePage() {
                   <h4 className="text-slate-200 font-bold mb-2">File Arsitektur WordPress yang Terhubung:</h4>
                   <div className="font-mono text-[11px] text-slate-400 space-y-1">
                     <div>• wp-content/plugins/ryokourent-core/ryokourent-core.php</div>
-                    <div>• wp-content/plugins/ryokourent-core/includes/post-types.php</div>
-                    <div>• wp-content/plugins/ryokourent-core/includes/taxonomies.php</div>
-                    <div>• wp-content/plugins/ryokourent-core/includes/meta-boxes.php</div>
-                    <div>• wp-content/plugins/ryokourent-core/includes/meta-fields.php</div>
-                    <div>• wp-content/plugins/ryokourent-core/public/shortcodes.php</div>
-                    <div>• wp-content/plugins/ryokourent-core/public/templates.php</div>
-                    <div>• wp-content/plugins/ryokourent-core/assets/css/ryokourent-public.css</div>
-                    <div>• wp-content/plugins/ryokourent-core/assets/js/ryokourent-filter.js</div>
+                    <div>• wp-content/plugins/ryokourent-core/includes/post-types.php (CPT motor, penyewaan, custom status)</div>
+                    <div>• wp-content/plugins/ryokourent-core/includes/taxonomies.php (kategori_motor)</div>
+                    <div>• wp-content/plugins/ryokourent-core/includes/meta-boxes.php (motor & penyewaan metaboxes)</div>
+                    <div>• wp-content/plugins/ryokourent-core/includes/meta-fields.php (skema & sanitasi)</div>
+                    <div>• wp-content/plugins/ryokourent-core/public/forms.php (form booking HTML5)</div>
+                    <div>• wp-content/plugins/ryokourent-core/public/shortcodes.php ([ryokou_catalog], [ryokou_booking_form])</div>
+                    <div>• wp-content/plugins/ryokourent-core/public/templates.php (render card & grid)</div>
+                    <div>• wp-content/plugins/ryokourent-core/assets/css/ryokourent-public.css (styling dark responsive)</div>
+                    <div>• wp-content/plugins/ryokourent-core/assets/js/ryokourent-filter.js (filter & Bromo lock)</div>
                     <div>• wp-content/themes/generatepress-child/single-motor.php</div>
                     <div>• wp-content/themes/generatepress-child/templates/single-motor.php</div>
                     <div>• wp-content/themes/generatepress-child/functions.php</div>
