@@ -17,6 +17,21 @@ Format penulisan berpedoman pada [Keep a Changelog](https://keepachangelog.com/i
   - Penyusunan `DECISIONS.md` mendokumentasikan 7 Architectural Decision Records (ADR-001 s/d ADR-007).
   - Penyusunan `TESTING.md` memetakan 20 skenario uji (TC-001 s/d TC-020).
   - Penyusunan `.env.example` dan `CONFIG.example.php`.
+- **Fase 2 (TASK-008: Halaman Detail Motor GeneratePress Child Theme):**
+  - Pembuatan template single post `wp-content/themes/generatepress-child/templates/single-motor.php` dan `single-motor.php` untuk merender informasi lengkap armada: header & breadcrumb navigasi kembali ke katalog, galeri foto, spesifikasi teknis (mesin cc, transmisi, karakter rute, bensin), callout edukasi khusus rute Bromo (peringatan larangan matik vs trail CRF 150L resmi Bromo), fasilitas sewa gratis (2 helm SNI steril, 2 jas hujan setelan, phone holder), dan sticky sidebar tarif resmi (harian toleransi overtime 2 jam, paket mingguan, paket bulanan, syarat sewa cepat, dan WhatsApp CTA).
+  - Pembaruan `wp-content/themes/generatepress-child/functions.php` dengan filter `single_template` dan dynamic stylesheet enqueue.
+  - Penambahan styling CSS responsif modern gelap di `wp-content/themes/generatepress-child/style.css`.
+  - Pembuatan automated unit test `wp-content/plugins/ryokourent-core/tests/test-single-motor.php`.
+- **Fase 2 (TASK-007: Tampilan Katalog Motor & Interaksi):**
+  - Pembuatan file `wp-content/plugins/ryokourent-core/public/shortcodes.php` untuk pendaftaran shortcode `[ryokou_catalog]` dengan atribut kustom, enqueue otomatis stylesheet, dan skrip filter.
+  - Pembuatan file `wp-content/plugins/ryokourent-core/public/templates.php` yang menyediakan fungsi render kartu motor (`ryokourent_render_motor_card`), formatting harga harian/mingguan/bulanan, badges ketersediaan & rute Bromo, fallback 7 armada resmi blueprint, dan banner 4 garansi layanan.
+  - Pembuatan file CSS `wp-content/plugins/ryokourent-core/assets/css/ryokourent-public.css` dengan desain mobile-first, high contrast dark theme, floating badges, dan touch-friendly action buttons.
+  - Pembuatan file JS `wp-content/plugins/ryokourent-core/assets/js/ryokourent-filter.js` (vanilla JS tanpa dependensi jQuery) untuk filter tab kategori tanpa reload, empty-state toggling, dan auto-select motor pada form booking.
+  - Pembuatan file automated unit test `wp-content/plugins/ryokourent-core/tests/test-catalog.php`.
+- **Fase 2 (TASK-006: Taxonomy Kategori Motor):**
+  - Pembuatan file `wp-content/plugins/ryokourent-core/includes/taxonomies.php` untuk pendaftaran taxonomy hierarkis `kategori_motor` (slug: `kategori-motor`), dukungan Gutenberg Block Editor, proteksi capability RBAC, dan seeding default 3 kategori utama (`beat-series`, `scoopy-vario`, `trail-adventure`) secara idempoten.
+  - Penambahan fungsi pembantu `ryokourent_get_motor_categories()` untuk mempermudah querying kategori di admin dan frontend.
+  - Pembuatan file automated unit test `wp-content/plugins/ryokourent-core/tests/test-taxonomies.php`.
 - **Fase 2 (TASK-005: Field Data Motor & Metabox):**
   - Pembuatan file `wp-content/plugins/ryokourent-core/includes/meta-boxes.php` yang menyediakan 3 panel metabox pada form edit CPT `motor`: panel Spesifikasi & Karakter Rute, panel Tarif Sewa (harian, mingguan, bulanan), dan panel Inventaris Unit Fisik & Plat Nomor.
   - Penerapan proteksi guard `DOING_AUTOSAVE`, verifikasi nonce `ryokourent_motor_meta_nonce`, dan pembatasan hak akses berbasis role (Operator hanya dapat mengubah spesifikasi, sedangkan perubahan tarif sewa dan kuota fisik internal dikunci hanya untuk Administrator).

@@ -17,9 +17,9 @@ Dokumen ini melacak status pengerjaan sesi, task aktif, dependensi yang telah te
   - `feature/availability` (Fitur pencegahan double booking & pengecekan stok unit)
   - `feature/whatsapp` (Fitur generator draft pesan & URL WhatsApp)
   - `feature/admin-dashboard` (Fitur dashboard admin & pelaporan operasional)
-* **Task Terakhir Selesai:** `TASK-005: Buat Field Data Motor (Metabox Spesifikasi & Kuota)`
+* **Task Terakhir Selesai:** `TASK-008: Buat Halaman Detail Motor`
 * **Status Task Terakhir:** **DONE (SELESAI)**
-* **Task Selanjutnya:** `TASK-006: Buat Taxonomy Kategori Motor`
+* **Task Selanjutnya:** `TASK-009: Buat Custom Post Type penyewaan` (Menunggu perintah persetujuan pengguna)
 
 ---
 
@@ -32,7 +32,58 @@ Dokumen ini melacak status pengerjaan sesi, task aktif, dependensi yang telah te
 | **TASK-003** | Plugin Loader & Helper Dasar | FASE 2 | **DONE** | TASK-002 | 2026-09-30 |
 | **TASK-004** | Custom Post Type `motor` | FASE 2 | **DONE** | TASK-003 | 2026-09-30 |
 | **TASK-005** | Metabox Spesifikasi & Kuota Motor | FASE 2 | **DONE** | TASK-004 | 2026-09-30 |
-| **TASK-006** | Taxonomy Kategori Motor | FASE 2 | **PENDING** | TASK-004 | - |
+| **TASK-006** | Taxonomy Kategori Motor | FASE 2 | **DONE** | TASK-004 | 2026-09-30 |
+| **TASK-007** | Tampilan Katalog Motor | FASE 2 | **DONE** | TASK-005, TASK-006 | 2026-09-30 |
+| **TASK-008** | Halaman Detail Motor | FASE 2 | **DONE** | TASK-007 | 2026-09-30 |
+| **TASK-009** | Custom Post Type `penyewaan` | FASE 3 | **PENDING** | TASK-004 | - |
+
+---
+
+## 3. Komponen yang Telah Diimplementasikan pada TASK-008
+1. **Template Single Post Motor (`wp-content/themes/generatepress-child/templates/single-motor.php` & `single-motor.php`):**
+   - Header & breadcrumbs "Kembali ke Katalog Armada".
+   - Media showcase & floating status badges (Tersedia / Booking Menipis / Penuh).
+   - Spesifikasi teknis terstruktur: Kapasitas mesin (cc), transmisi, karakter rute, dan sistem bahan bakar.
+   - Kotak edukasi & peringatan rute Bromo adaptif (peringatan larangan skutik ke pasir Bromo vs unit Trail CRF 150L resmi Bromo).
+   - Fasilitas standar gratis (2 Helm SNI steril, 2 Jas Hujan setelan, phone holder stang, dan bantuan darurat jalan).
+   - Sticky Pricing Sidebar: Tarif resmi harian dengan catatan toleransi overtime 2 jam, paket mingguan 7 hari, paket bulanan 30 hari.
+   - Quick rental requirements: e-KTP asli, 2 dokumen pendukung, dan akun media sosial.
+   - Dual CTA Action: Tombol booking cepat langsung memilih unit dan tombol Chat WhatsApp Admin terformat rapi.
+2. **Filter Template Hierarchy (`wp-content/themes/generatepress-child/functions.php`):**
+   - Hook `single_template` untuk resolusi otomatis template `templates/single-motor.php` dan fallback ke root child theme.
+   - Enqueue dinamis stylesheet publik ketika post single motor dikunjungi.
+3. **Styling Elegan Tema Gelap (`wp-content/themes/generatepress-child/style.css`):**
+   - Layout grid 2 kolom desktop dengan sticky sidebar dan 1 kolom responsif pada smartphone.
+
+---
+
+## 4. Komponen yang Telah Diimplementasikan pada TASK-007
+1. **Shortcode `[ryokou_catalog]` (`wp-content/plugins/ryokourent-core/public/shortcodes.php`):**
+   - Mendaftarkan shortcode fleksibel dengan parameter `kategori`, `limit`, `show_filter`, dan `columns`.
+   - Enqueue aset CSS dan JS secara terisolasi hanya pada halaman yang memuat katalog.
+   - Localize script configuration (`ajaxUrl`, `waNumber`, `bookingAnchor`).
+2. **Template Renderer Motor Card & Grid (`wp-content/plugins/ryokourent-core/public/templates.php`):**
+   - Fungsi `ryokourent_render_motor_card()` dan `ryokourent_render_catalog_grid()`.
+   - Menampilkan 7 armada resmi blueprint dengan fallback yang kokoh jika basis data WordPress belum terisi.
+   - Format harga rapi (`Rp xx.xxx / 24 Jam` atau placeholder `Tanya Admin`).
+   - Badges status ketersediaan (hijau, amber, merah) dan penanda rute Bromo.
+   - Dual action button: "Sewa Sekarang" dan "Chat WA" dengan format pesan WhatsApp yang di-encode rapi.
+   - Banner garansi 4 poin kepercayaan di bawah grid katalog.
+3. **Desain Mobile-First & Filter Interaktif (`assets/css/ryokourent-public.css` & `assets/js/ryokourent-filter.js`):**
+   - Tab filter pills kategori tanpa reload halaman (*zero jQuery, pure vanilla JS*).
+   - Tampilan *empty state* interaktif dengan tombol reset filter.
+   - Integrasi auto-select dropdown armada form booking saat tombol "Sewa Sekarang" diklik.
+
+---
+
+## 5. Komponen yang Telah Diimplementasikan pada TASK-006
+1. **Taxonomy `kategori_motor` (`wp-content/plugins/ryokourent-core/includes/taxonomies.php`):**
+   - Terdaftar secara hierarkis untuk CPT `motor` dengan slug `kategori-motor`.
+   - Dukungan Block Editor Gutenberg (`show_in_rest => true`).
+   - Proteksi kapabilitas: `manage_ryokourent_settings` untuk manipulasi term dan `edit_posts` untuk penugasan term.
+2. **Seeding Kategori Default Idempoten:**
+   - Term: `beat-series` (Honda BeAT Series), `scoopy-vario` (Honda Scoopy & Vario), dan `trail-adventure` (Trail Adventure (Bromo)).
+   - Helper `ryokourent_get_motor_categories()` untuk kemudahan querying term di admin maupun frontend.
 
 ---
 

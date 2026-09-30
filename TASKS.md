@@ -79,39 +79,48 @@ Dokumen ini berisi rincian urutan 30 task proyek Ryokourent sesuai dengan arsite
 
 ---
 
-### TASK-006: Buat Taxonomy Kategori Motor
+### TASK-006: Buat Taxonomy Kategori Motor [DONE]
+* **Status:** Selesai (DONE) - 2026-09-30
 * **Tujuan:** Mendaftarkan taxonomy hierarkis `kategori_motor` (BeAT Series, Scoopy & Vario, Trail Adventure).
 * **File yang Dibuat/Diubah:**
   * `wp-content/plugins/ryokourent-core/includes/taxonomies.php`
+  * `wp-content/plugins/ryokourent-core/tests/test-taxonomies.php`
 * **Dependensi:** TASK-004.
-* **Kriteria Selesai:** Kategori Motor dapat dikelola dari submenu CPT `motor` dan dikaitkan ke masing-masing unit armada.
-* **Cara Pengujian:** Buat 3 term kategori utama dan tetapkan ke data motor contoh.
-* **Risiko:** Duplikasi nama kategori atau slug URL bertabrakan.
+* **Kriteria Selesai:** Kategori Motor dapat dikelola dari submenu CPT `motor` dan dikaitkan ke masing-masing unit armada. Dilengkapi dengan seeding idempoten untuk 3 kategori default (`beat-series`, `scoopy-vario`, `trail-adventure`), proteksi kapabilitas `manage_ryokourent_settings` untuk pengeditan dan `edit_posts` untuk penetapan term ke armada, serta helper `ryokourent_get_motor_categories()`.
+* **Cara Pengujian:** Verifikasi pendaftaran taxonomy `kategori_motor`, seeding 3 term utama, dan verifikasi hirarki via test suite `test-taxonomies.php`.
+* **Risiko:** Duplikasi nama kategori atau slug URL bertabrakan (teratasi dengan pengecekan `term_exists` idempoten).
 
 ---
 
-### TASK-007: Buat Tampilan Katalog Motor
+### TASK-007: Buat Tampilan Katalog Motor [DONE]
+* **Status:** Selesai (DONE) - 2026-09-30
 * **Tujuan:** Membuat shortcode `[ryokou_catalog]` dan template grid katalog motor mobile-first dengan filter tab kategori, spesifikasi, dan tombol CTA "Sewa Sekarang" serta "Chat WA".
 * **File yang Dibuat/Diubah:**
   * `wp-content/plugins/ryokourent-core/public/shortcodes.php`
   * `wp-content/plugins/ryokourent-core/public/templates.php`
   * `wp-content/plugins/ryokourent-core/assets/css/ryokourent-public.css`
   * `wp-content/plugins/ryokourent-core/assets/js/ryokourent-filter.js`
+  * `wp-content/plugins/ryokourent-core/tests/test-catalog.php`
 * **Dependensi:** TASK-005, TASK-006.
-* **Kriteria Selesai:** Katalog menampilkan 7 armada sesuai blueprint dengan tab filter responsif tanpa reload halaman.
-* **Cara Pengujian:** Pasang shortcode pada halaman, uji klik filter tab pada resolusi HP dan desktop.
-* **Risiko:** Gambar motor lambat dimuat jika ukuran tidak dioptimasi.
+* **Kriteria Selesai:** Katalog menampilkan 7 armada sesuai blueprint (BeAT Deluxe, BeAT CBS, BeAT Street, Scoopy, Vario 125, Vario 160, Trail CRF 150L) dengan tab filter responsif tanpa reload halaman, floating badges status ketersediaan, penanda khusus Bromo, rincian harga harian/mingguan/bulanan, fasilitas termasuk (2 Helm SNI + 2 Jas Hujan), dan tombol aksi "Sewa Sekarang" & "Chat WA".
+* **Cara Pengujian:** Jalankan unit test `test-catalog.php`, verifikasi format harga, fallback armada, shortcode attributes, dan interaktivitas filter tab.
+* **Risiko:** Gambar motor lambat dimuat jika ukuran tidak dioptimasi (teratasi dengan placeholder modern, responsive image attributes, dan lazy loading).
 
 ---
 
-### TASK-008: Buat Halaman Detail Motor
+### TASK-008: Buat Halaman Detail Motor [DONE]
+* **Status:** Selesai (DONE) - 2026-09-30
 * **Tujuan:** Membuat template single post (`single-motor.php`) pada child theme yang menampilkan detail mendalam motor, keunggulan rute, peringatan rute Bromo, kelengkapan helm/jas hujan, dan form booking cepat.
 * **File yang Dibuat/Diubah:**
   * `wp-content/themes/generatepress-child/templates/single-motor.php`
+  * `wp-content/themes/generatepress-child/single-motor.php`
+  * `wp-content/themes/generatepress-child/functions.php`
+  * `wp-content/themes/generatepress-child/style.css`
+  * `wp-content/plugins/ryokourent-core/tests/test-single-motor.php`
 * **Dependensi:** TASK-007.
-* **Kriteria Selesai:** Akses URL `/motor/honda-beat-deluxe/` menampilkan layout elegan dengan informasi spesifikasi lengkap dan link ke form booking.
-* **Cara Pengujian:** Buka single post motor di browser, verifikasi peringatan khusus Bromo pada unit matik vs Trail CRF.
-* **Risiko:** Override template hierarchy GeneratePress tidak terbaca.
+* **Kriteria Selesai:** Akses single post motor menampilkan layout elegan dengan informasi spesifikasi lengkap (cc mesin, transmisi, karakter rute), peringatan khusus Bromo (larangan matik ke pasir Bromo vs unit Trail CRF 150L resmi Bromo), fasilitas helm/jas hujan/holder HP, sidebar card tarif resmi dengan toleransi overtime 2 jam, syarat sewa cepat, dan direct CTA booking. Filter `single_template` di `functions.php` memastikan resolusi template selalu sukses.
+* **Cara Pengujian:** Jalankan unit test `test-single-motor.php`, verifikasi template di root & folder templates, deteksi post meta `_ryokou_is_bromo_ready`, dan link WhatsApp.
+* **Risiko:** Override template hierarchy GeneratePress tidak terbaca (teratasi dengan menyediakan template di root child theme serta filter `single_template`).
 
 ---
 
