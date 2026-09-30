@@ -7,6 +7,16 @@ Dokumen ini melacak status pengerjaan sesi, task aktif, dependensi yang telah te
 ## 1. Status Sesi Saat Ini
 * **Tanggal / Waktu:** 2026-09-30
 * **Cabang Git Aktif:** `develop`
+* **Daftar Cabang Proyek Terdaftar (sesuai `GIT_WORKFLOW.md`):**
+  - `main` (Branch produksi resmi)
+  - `develop` (Branch integrasi aktif)
+  - `feature/cpt-motor` (Fitur CPT & katalog armada motor)
+  - `feature/cpt-booking` (Fitur CPT penyewaan & transaksi sewa)
+  - `feature/booking-form` (Fitur formulir pemesanan & kalkulasi)
+  - `feature/pricing` (Fitur kalkulator tarif harian, mingguan, bulanan)
+  - `feature/availability` (Fitur pencegahan double booking & pengecekan stok unit)
+  - `feature/whatsapp` (Fitur generator draft pesan & URL WhatsApp)
+  - `feature/admin-dashboard` (Fitur dashboard admin & pelaporan operasional)
 * **Task Terakhir Selesai:** `TASK-004: Buat Custom Post Type motor`
 * **Status Task Terakhir:** **DONE (SELESAI)**
 * **Task Selanjutnya:** `TASK-005: Buat Field Data Motor (Metabox Spesifikasi & Kuota)`
