@@ -157,6 +157,8 @@ $expected_metas = array(
 foreach ($expected_metas as $meta_key) {
     run_test("Meta field '{$meta_key}' is registered with sanitization callback", isset($motor_metas[$meta_key]) && !empty($motor_metas[$meta_key]['sanitize_callback']));
 }
+run_test("Internal meta '_ryokou_physical_stock' is hidden from public REST", false === ($motor_metas['_ryokou_physical_stock']['show_in_rest'] ?? true));
+run_test("Internal meta '_ryokou_plate_numbers' is hidden from public REST", false === ($motor_metas['_ryokou_plate_numbers']['show_in_rest'] ?? true));
 
 // 3. Sanitization Function Tests
 echo "\n3. Input Sanitization Callbacks:\n";

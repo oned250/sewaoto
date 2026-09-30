@@ -47,7 +47,7 @@ Dokumen ini mencatat keputusan-keputusan arsitektural penting yang telah disepak
 ### ADR-006: Role-Based Access Control (RBAC) Khusus Operator
 * **Status:** Diterima (Accepted)
 * **Konteks:** Staf operasional lapangan hanya bertugas memproses booking dan memantau ketersediaan armada, bukan mengelola pengaturan website atau mengubah tarif rental.
-* **Keputusan:** Membuat role baru `ryokou_operator` dengan capability `manage_ryokourent_bookings`. Role ini tidak memiliki hak akses ke menu tema, plugin settings, atau manajemen pengguna lain.
+* **Keputusan:** Membuat role baru `ryokourent_operator` dengan capability `manage_ryokourent_bookings`. Role ini tidak memiliki hak akses ke menu tema, plugin settings, atau manajemen pengguna lain. Administrator diberikan capability `manage_ryokourent_bookings` dan `manage_ryokourent_settings`.
 * **Alasan:** Mencegah perubahan konfigurasi yang tidak disengaja dan meningkatkan keamanan sistem operasional.
 
 ---
@@ -57,3 +57,15 @@ Dokumen ini mencatat keputusan-keputusan arsitektural penting yang telah disepak
 * **Konteks:** Menyimpan foto e-KTP dan kartu identitas pelanggan di direktori publik `wp-content/uploads/` berisiko tinggi terhadap kebocoran data pribadi (UU PDP).
 * **Keputusan:** Formulir web hanya mencatat data teks (Nama, Alamat KTP, Tempat Menginap, No. HP, Kontak Darurat, Akun Medsos). Foto fisik dokumen identitas dikirimkan langsung oleh pelanggan melalui chat WhatsApp yang terenkripsi *end-to-end* kepada admin.
 * **Alasan:** Mematuhi prinsip perlindungan privasi data pribadi dan menghindari kerentanan kebocoran file dokumen di server hosting.
+
+---
+
+### ADR-008: Validasi Server-Side Mutlak & Pencegahan Race Condition Double Booking
+* **Status:** Diterima (Accepted)
+* **Konteks:** Perhitungan harga, jam operasional, dan durasi di sisi frontend (JavaScript) rentan dimanipulasi melalui browser DevTools. Selain itu, pengecekan ketersediaan armada rentan race condition jika dua pelanggan memesan armada terakhir secara bersamaan atau saat admin mengonfirmasi pesanan.
+* **Keputusan:**
+  1. Server selalu menghitung ulang durasi, memvalidasi jam operasional (07:00-23:00 WIB), dan menentukan total tarif secara mutlak di backend; nilai harga dari client diabaikan.
+  2. Pengecekan ketersediaan kuota dilakukan di dua titik: saat submit pesanan awal dan saat status diubah menjadi `status_dikonfirmasi` oleh admin.
+  3. Proteksi atomic lock (misal `GET_LOCK` MySQL atau transient lock per model motor) dipasang pada jalur kritis pemesanan dan konfirmasi.
+  4. Seluruh meta internal motor (`_ryokou_physical_stock` dan `_ryokou_plate_numbers`) dinonaktifkan dari REST API publik (`show_in_rest => false`) untuk mencegah kebocoran data armada.
+* **Alasan:** Menjamin integritas finansial, keakuratan jadwal operasional, dan perlindungan privasi inventaris armada dari scraping publik.

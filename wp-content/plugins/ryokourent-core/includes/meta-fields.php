@@ -97,24 +97,28 @@ function ryokourent_register_motor_meta_fields() {
         'show_in_rest'      => true,
     ));
 
-    // 8. Jumlah Unit Fisik (Operator Internal)
+    // 8. Jumlah Unit Fisik (Operator Internal - REST tertutup untuk keamanan data)
     register_post_meta('motor', '_ryokou_physical_stock', array(
         'type'              => 'integer',
         'description'       => __('Total unit armada fisik yang dimiliki untuk model ini', 'ryokourent'),
         'single'            => true,
         'sanitize_callback' => 'ryokourent_sanitize_physical_stock',
-        'auth_callback'     => $auth_callback,
-        'show_in_rest'      => true,
+        'auth_callback'     => function() {
+            return current_user_can('manage_ryokourent_settings') || current_user_can('manage_options');
+        },
+        'show_in_rest'      => false,
     ));
 
-    // 9. Daftar Plat Nomor (Operator Internal)
+    // 9. Daftar Plat Nomor (Operator Internal - REST tertutup untuk keamanan data)
     register_post_meta('motor', '_ryokou_plate_numbers', array(
         'type'              => 'string',
         'description'       => __('Daftar plat nomor unit fisik (satu plat per baris)', 'ryokourent'),
         'single'            => true,
         'sanitize_callback' => 'ryokourent_sanitize_plate_numbers_text',
-        'auth_callback'     => $auth_callback,
-        'show_in_rest'      => true,
+        'auth_callback'     => function() {
+            return current_user_can('manage_ryokourent_settings') || current_user_can('manage_options');
+        },
+        'show_in_rest'      => false,
     ));
 
     // 10. Badge Status Publik

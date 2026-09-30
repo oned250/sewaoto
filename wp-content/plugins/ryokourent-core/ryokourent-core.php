@@ -67,10 +67,46 @@ function ryokourent_activate_plugin() {
         add_option('ryokourent_wa_number', RYOKOURENT_DEFAULT_WA_NUMBER);
     }
 
+    // Register CPTs prior to rewrite flush.
+    if (function_exists('ryokourent_register_cpt_motor')) {
+        ryokourent_register_cpt_motor();
+    }
+
+    // Register operator role.
+    if (function_exists('add_role')) {
+        add_role('ryokourent_operator', __('Ryokourent Operator', 'ryokourent'), array(
+            'read'                       => true,
+            'manage_ryokourent_bookings' => true,
+        ));
+    }
+
+    // Grant custom capabilities to administrator role.
+    if (function_exists('get_role')) {
+        $admin = get_role('administrator');
+        if ($admin) {
+            $admin->add_cap('manage_ryokourent_bookings');
+            $admin->add_cap('manage_ryokourent_settings');
+        }
+    }
+
     // Flush rewrite rules on activation.
     flush_rewrite_rules();
 }
 register_activation_hook(__FILE__, 'ryokourent_activate_plugin');
+
+/**
+ * Ensure administrator role always has Ryokourent custom capabilities.
+ */
+function ryokourent_ensure_admin_capabilities() {
+    if (function_exists('get_role') && current_user_can('manage_options')) {
+        $admin = get_role('administrator');
+        if ($admin && !$admin->has_cap('manage_ryokourent_settings')) {
+            $admin->add_cap('manage_ryokourent_settings');
+            $admin->add_cap('manage_ryokourent_bookings');
+        }
+    }
+}
+add_action('admin_init', 'ryokourent_ensure_admin_capabilities');
 
 /**
  * Deactivation hook callback.
